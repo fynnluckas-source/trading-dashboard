@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 docs/
 public/
+mt5-export/
