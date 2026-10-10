@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # fest, damit die Umstellung von ubuntu-latest auf Ubuntu 26 (ab 19.10.2026) nichts kippt
     timeout-minutes: 20
     environment:
       name: github-pages
