@@ -41,6 +41,16 @@ def kurse(markt):
         return None
 
 
+def kurse_fuer_seite(df):
+    """Tageskurse kompakt für den Zeitraum-Rechner im Browser (Tagesnummer-Abstände und auf 6 Stellen gerundete Kurse)."""
+    aus = {}
+    for m in df:
+        s = df[m].dropna()
+        tage = [int(t.value // 86_400_000_000_000) for t in s.index]
+        aus[m] = {"t": [tage[0]] + [y - x for x, y in zip(tage, tage[1:])], "p": [float(f"{x:.6g}") for x in s.values]}
+    return aus
+
+
 def ampel(alter):
     gruen, gelb = config.FRISCHE["COT"]
     return "gruen" if alter <= gruen else "gelb" if alter <= gelb else "rot"
@@ -100,6 +110,7 @@ def baue(quellen=None):
         saison = None
     daten = {
         "saison": saison,
+        "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "pruefung": pruefung,
         "gebaut_iso": jetzt.strftime("%Y-%m-%dT%H:%M:%SZ"), "quellen": quellen,
         "stand": stand.strftime("%Y-%m-%d"), "alter": int(alter), "ampel": ampel(alter),
@@ -107,7 +118,9 @@ def baue(quellen=None):
         "gruppen": {g: {"name": v[2], "text": v[3], "bericht": v[0]} for g, v in kz.GRUPPEN.items()},
         "latest": latest, "serie": serie, "kurs_fehler": kurs_fehler,
     }
-    html = (HIER / "seite_vorlage.html").read_text(encoding="utf-8").replace("__DATEN__", json.dumps(daten, ensure_ascii=False))
+    html = (HIER / "seite_vorlage.html").read_text(encoding="utf-8")
+    html = html.replace("/*__ZEITRAUM_JS__*/", (HIER / "zeitraum.js").read_text(encoding="utf-8"))
+    html = html.replace("__DATEN__", json.dumps(daten, ensure_ascii=False, separators=(",", ":")))
     DOCS.mkdir(exist_ok=True)
     ziel = DOCS / "index.html"
     ziel.write_text(html, encoding="utf-8")

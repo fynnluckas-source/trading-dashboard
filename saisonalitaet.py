@@ -111,3 +111,68 @@ def berechne(kurse, ref, bis_jahr=None):
             erg["maerkte"][m][str(n)] = {"jahre_verfuegbar": anz, "monate": monate(p, n, bis), "wochen": wochen(p, n, bis),
                                          "kurve": k, "ausblick": ausblick(p, n, bis, ref)}
     return erg
+
+
+# ---------------------------------------------------------------------------------------------
+# Zeitraum-Rechner (wie bei Seasonax): frei gewähltes Fenster, Winrate, Sharpe Ratio, Ampel
+# ---------------------------------------------------------------------------------------------
+import calendar
+
+SHARPE_ZINS = 1.6   # Prozent pro Jahr, aus dem Seasonax-Screenshot abgeleitet (6E 22.10.-10.11.: -19,41 % / 9,03 % -> Sharpe -2,33)
+HANDELSTAGE = 252
+MIN_JAHRE = 5       # weniger Jahre mit Daten: keine Kennzahlen
+REGEL_WINRATE_LONG, REGEL_SHARPE_LONG = 60.0, 1.0
+REGEL_WINRATE_SHORT, REGEL_SHARPE_SHORT = 40.0, -1.0
+
+
+def _tag(jahr, monat, tag):
+    return pd.Timestamp(year=jahr, month=monat, day=min(tag, calendar.monthrange(jahr, monat)[1]))
+
+
+def ampel(winrate, sharpe):
+    """Fynns Seasonax-Regel: Long ab Winrate 60 % und Sharpe +1, Short bis Winrate 40 % und Sharpe -1."""
+    if winrate is None or sharpe is None:
+        return "neutral"
+    if winrate >= REGEL_WINRATE_LONG and sharpe >= REGEL_SHARPE_LONG:
+        return "long"
+    if winrate <= REGEL_WINRATE_SHORT and sharpe <= REGEL_SHARPE_SHORT:
+        return "short"
+    return "neutral"
+
+
+def zeitraum(preise, start, ende, n, bis_jahr, zins=SHARPE_ZINS):
+    """Kennzahlen eines frei gewählten Fensters (start, ende = (Monat, Tag)) über die letzten n abgeschlossenen Jahre.
+
+    Einstieg = erster Handelstag ab dem Starttag, Ausstieg = letzter Handelstag bis zum Endtag (Ende vor Start = Jahreswechsel).
+    Winrate = Anteil der Jahre mit Plus. Jahresrendite und Schwankung kommen aus den Tagesrenditen aller Fenstertage
+    (wie bei Seasonax), Sharpe = (Jahresrendite - Zins) / Schwankung."""
+    s = preise.dropna()
+    idx, vals = s.index, s.values
+    jahre_liste, fenster, tages = [], [], []
+    for y in _jahre(bis_jahr, n):
+        ey = y + (1 if (ende[0], ende[1]) < (start[0], start[1]) else 0)
+        a, b = _tag(y, *start), _tag(ey, *ende)
+        if a < idx[0] or b > idx[-1]:
+            continue
+        i0 = idx.searchsorted(a, side="left")
+        i1 = idx.searchsorted(b, side="right") - 1
+        if i1 <= i0:
+            continue
+        fenster.append(vals[i1] / vals[i0] - 1)
+        tages.extend(vals[i0 + 1:i1 + 1] / vals[i0:i1] - 1)
+        jahre_liste.append({"jahr": y, "start": a.strftime("%Y-%m-%d"), "ende": b.strftime("%Y-%m-%d"), "rendite": round(float((vals[i1] / vals[i0] - 1) * 100), 3)})
+    k = len(fenster)
+    ergebnis = {"n": k, "jahre": jahre_liste, "kalendertage": int((_tag(2001 + (1 if (ende[0], ende[1]) < (start[0], start[1]) else 0), *ende) - _tag(2001, *start)).days)}
+    if k < MIN_JAHRE:
+        return {**ergebnis, "plus": None, "minus": None, "winrate": None, "mean": None, "median": None, "std": None,
+                "jahresrendite": None, "schwankung": None, "sharpe": None, "ampel": "neutral"}
+    f = np.array(fenster) * 100
+    t = np.array(tages)
+    jr = ((1 + t.mean()) ** HANDELSTAGE - 1) * 100
+    vol = t.std(ddof=1) * np.sqrt(HANDELSTAGE) * 100
+    sharpe = (jr - zins) / vol if vol > 1e-6 else None  # praktisch keine Schwankung: nicht definiert
+    winrate = float((f > 0).mean() * 100)
+    return {**ergebnis, "plus": int((f > 0).sum()), "minus": int((f <= 0).sum()), "winrate": round(winrate, 1),
+            "mean": round(float(f.mean()), 3), "median": round(float(np.median(f)), 3), "std": round(float(f.std(ddof=1)), 3),
+            "jahresrendite": round(float(jr), 2), "schwankung": round(float(vol), 2),
+            "sharpe": None if sharpe is None else round(float(sharpe), 3), "ampel": ampel(winrate, sharpe)}
