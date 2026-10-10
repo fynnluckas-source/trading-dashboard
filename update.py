@@ -30,6 +30,13 @@ def main():
         fehler.append(f"Kurse konnten nicht geladen werden (alte Datei bleibt): {e}")
         print(f"::error::{fehler[-1]}")
 
+    try:
+        fut = kurse.lade_future(neu=True)  # zweite Kursquelle, bei Fehler bleibt die alte Datei
+        print(f"Future-Kurse: {fut.shape[1]} Märkte bis {fut.index.max().date()}")
+    except Exception as e:
+        fehler.append(f"Future-Kurse konnten nicht geladen werden (alte Datei bleibt): {e}")
+        print(f"::error::{fehler[-1]}")
+
     quellen = check_quellen.alle()
     for q in quellen:
         if q["status"] == "ROT":

@@ -24,9 +24,8 @@ function zeitraumRechnen(tage, preise, start, ende, n, bisJahr, zins = ZEITRAUM_
   const fenster = [], tages = [], jahre = [];
   for (let y = bisJahr - n + 1; y <= bisJahr; y++) {
     const a = ztag(y, start[0], start[1]), b = ztag(y + (ueber ? 1 : 0), ende[0], ende[1]);
-    if (a < tage[0] || b > tage[tage.length - 1]) continue;
-    const i0 = zsuche(tage, a, false), i1 = zsuche(tage, b, true) - 1;
-    if (i1 <= i0) continue;
+    const i0 = zsuche(tage, a, false), i1 = zsuche(tage, b, false);   // Einstieg und Ausstieg: erster Handelstag ab dem Datum (wie bei Seasonax)
+    if (a < tage[0] || i1 >= tage.length || i1 <= i0) continue;
     const r = preise[i1] / preise[i0] - 1;
     fenster.push(r * 100);
     for (let i = i0 + 1; i <= i1; i++) tages.push(preise[i] / preise[i - 1] - 1);
@@ -47,4 +46,10 @@ function zeitraumRechnen(tage, preise, start, ende, n, bisJahr, zins = ZEITRAUM_
   return {...leer, plus, minus: k - plus, winrate, mean: mw, median: zmedian(fenster), std: sf, jahresrendite: jr, schwankung: vol,
           sharpe, ampel: zampel(winrate, sharpe)};
 }
-if (typeof module !== "undefined") module.exports = {zeitraumRechnen, ztag};
+function zampelKombi(kassa, future) {
+  if (future === null || future === undefined) return {status: kassa, stabil: null};
+  if (kassa === future) return {status: kassa, stabil: true};
+  if (kassa === "neutral" || future === "neutral") return {status: kassa !== "neutral" ? kassa : future, stabil: false};
+  return {status: "widerspruch", stabil: false};
+}
+if (typeof module !== "undefined") module.exports = {zeitraumRechnen, ztag, zampelKombi};

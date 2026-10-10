@@ -20,8 +20,8 @@ def test_fenster_von_hand_konstantes_wachstum():
     z = sa.zeitraum(p, (6, 1), (6, 8), 10, 2025)
     erwartet = (1.001 ** 5 - 1) * 100
     assert z["n"] == 10 and z["plus"] == 10 and z["winrate"] == 100.0
-    # je nach Wochentag liegen 4 bis 5 Handelstage im Fenster: Mittel zwischen 4 und 5 Tagen Wachstum
-    assert (1.001 ** 4 - 1) * 100 - 1e-9 <= z["mean"] <= erwartet + 1e-9
+    # Start und Ende sind jeweils der erste Handelstag ab dem Datum: je nach Wochentag 4 bis 6 Handelstage im Fenster
+    assert (1.001 ** 4 - 1) * 100 - 1e-9 <= z["mean"] <= (1.001 ** 6 - 1) * 100 + 1e-9
     assert z["kalendertage"] == 7
 
 

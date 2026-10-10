@@ -45,3 +45,14 @@ def test_python_und_browser_rechnen_gleich():
                     # Python rundet die Ausgabe auf feste Nachkommastellen, JS nicht: erlaubt ist nur der Rundungsfehler
                     stellen = {"winrate": 1, "mean": 3, "median": 3, "std": 3, "jahresrendite": 2, "schwankung": 2, "sharpe": 3}[feld]
                     assert abs(p[feld] - j[feld]) <= 0.5 * 10 ** -stellen + 1e-9, (markt, fall, feld, p[feld], j[feld])
+
+
+def test_kombi_ampel_python_und_browser_gleich():
+    if shutil.which("node") is None:
+        pytest.skip("node nicht installiert")
+    werte = ["long", "short", "neutral"]
+    faelle = [(a, b) for a in werte for b in werte + [None]]
+    code = "const {zampelKombi}=require('./zeitraum.js'); const f=" + json.dumps(faelle) + "; console.log(JSON.stringify(f.map(([a,b])=>zampelKombi(a,b))));"
+    aus = subprocess.run(["node", "-e", code], cwd=os.path.dirname(HIER), capture_output=True, text=True, check=True)
+    for (a, b), js in zip(faelle, json.loads(aus.stdout)):
+        assert sa.ampel_kombi(a, b) == js, (a, b)

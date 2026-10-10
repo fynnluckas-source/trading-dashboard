@@ -143,7 +143,7 @@ def ampel(winrate, sharpe):
 def zeitraum(preise, start, ende, n, bis_jahr, zins=SHARPE_ZINS):
     """Kennzahlen eines frei gewählten Fensters (start, ende = (Monat, Tag)) über die letzten n abgeschlossenen Jahre.
 
-    Einstieg = erster Handelstag ab dem Starttag, Ausstieg = letzter Handelstag bis zum Endtag (Ende vor Start = Jahreswechsel).
+    Einstieg = erster Handelstag ab dem Starttag, Ausstieg = erster Handelstag ab dem Endtag, wie bei Seasonax (Ende vor Start = Jahreswechsel).
     Winrate = Anteil der Jahre mit Plus. Jahresrendite und Schwankung kommen aus den Tagesrenditen aller Fenstertage
     (wie bei Seasonax), Sharpe = (Jahresrendite - Zins) / Schwankung."""
     s = preise.dropna()
@@ -152,15 +152,13 @@ def zeitraum(preise, start, ende, n, bis_jahr, zins=SHARPE_ZINS):
     for y in _jahre(bis_jahr, n):
         ey = y + (1 if (ende[0], ende[1]) < (start[0], start[1]) else 0)
         a, b = _tag(y, *start), _tag(ey, *ende)
-        if a < idx[0] or b > idx[-1]:
-            continue
-        i0 = idx.searchsorted(a, side="left")
-        i1 = idx.searchsorted(b, side="right") - 1
-        if i1 <= i0:
+        i0 = idx.searchsorted(a, side="left")      # Einstieg: erster Handelstag ab dem Starttag
+        i1 = idx.searchsorted(b, side="left")      # Ausstieg: erster Handelstag ab dem Endtag (wie bei Seasonax)
+        if a < idx[0] or i1 >= len(idx) or i1 <= i0:
             continue
         fenster.append(vals[i1] / vals[i0] - 1)
         tages.extend(vals[i0 + 1:i1 + 1] / vals[i0:i1] - 1)
-        jahre_liste.append({"jahr": y, "start": a.strftime("%Y-%m-%d"), "ende": b.strftime("%Y-%m-%d"), "rendite": round(float((vals[i1] / vals[i0] - 1) * 100), 3)})
+        jahre_liste.append({"jahr": y, "start": idx[i0].strftime("%Y-%m-%d"), "ende": idx[i1].strftime("%Y-%m-%d"), "rendite": round(float((vals[i1] / vals[i0] - 1) * 100), 3)})
     k = len(fenster)
     ergebnis = {"n": k, "jahre": jahre_liste, "kalendertage": int((_tag(2001 + (1 if (ende[0], ende[1]) < (start[0], start[1]) else 0), *ende) - _tag(2001, *start)).days)}
     if k < MIN_JAHRE:
@@ -176,3 +174,16 @@ def zeitraum(preise, start, ende, n, bis_jahr, zins=SHARPE_ZINS):
             "mean": round(float(f.mean()), 3), "median": round(float(np.median(f)), 3), "std": round(float(f.std(ddof=1)), 3),
             "jahresrendite": round(float(jr), 2), "schwankung": round(float(vol), 2),
             "sharpe": None if sharpe is None else round(float(sharpe), 3), "ampel": ampel(winrate, sharpe)}
+
+
+def ampel_kombi(kassa, future):
+    """Ampel aus zwei Kursquellen. 'stabil' heißt: beide Quellen kommen zum selben Ergebnis.
+
+    future = None: nur eine Quelle (z. B. beim DX), dann gibt es keine Stabilitätsaussage."""
+    if future is None:
+        return {"status": kassa, "stabil": None}
+    if kassa == future:
+        return {"status": kassa, "stabil": True}
+    if "neutral" in (kassa, future):
+        return {"status": kassa if kassa != "neutral" else future, "stabil": False}
+    return {"status": "widerspruch", "stabil": False}

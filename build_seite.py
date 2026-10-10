@@ -111,6 +111,7 @@ def baue(quellen=None):
     daten = {
         "saison": saison,
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
+        "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),
         "pruefung": pruefung,
         "gebaut_iso": jetzt.strftime("%Y-%m-%dT%H:%M:%SZ"), "quellen": quellen,
         "stand": stand.strftime("%Y-%m-%d"), "alter": int(alter), "ampel": ampel(alter),

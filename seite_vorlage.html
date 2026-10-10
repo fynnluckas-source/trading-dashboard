@@ -330,13 +330,16 @@ function saisonChart() {
 
 /*__ZEITRAUM_JS__*/
 
-const ZR = {markt: null, n: 15, start: null, ende: null, daten: {}};
-function zrDaten(m) {                                 // Kurse einmal aus der kompakten Form (Tagesnummer-Abstände) entpacken
-  if (!ZR.daten[m]) {
-    const k = DATA.kurse[m]; let t = 0;
-    ZR.daten[m] = {tage: k.t.map(d => (t += d)), preise: k.p};
+const ZR = {markt: null, n: 15, start: null, ende: null, quelle: "kassa", daten: {}};
+function zrDaten(m, quelle) {                         // Kurse einmal aus der kompakten Form (Tagesnummer-Abstände) entpacken
+  const quelleDaten = quelle === "future" ? DATA.kurse_future : DATA.kurse;
+  if (!quelleDaten || !quelleDaten[m]) return null;
+  const key = quelle + m;
+  if (!ZR.daten[key]) {
+    const k = quelleDaten[m]; let t = 0;
+    ZR.daten[key] = {tage: k.t.map(d => (t += d)), preise: k.p};
   }
-  return ZR.daten[m];
+  return ZR.daten[key];
 }
 function zrAuffaellig(plus, n) { const g = DATA.saison.zufall[String(n)]; if (!g || !n) return 0; return plus >= g ? 1 : plus <= n - g ? -1 : 0; }
 function zrOpt(von, bis, wahl, namen) {
@@ -359,7 +362,9 @@ function zeitraum() {
         <div class="reihe" style="margin-top:0"><b>Start</b> <select id="zrSd" aria-label="Starttag"></select> <select id="zrSm" aria-label="Startmonat"></select>
           <b style="margin-left:12px">Ende</b> <select id="zrEd" aria-label="Endtag"></select> <select id="zrEm" aria-label="Endmonat"></select></div>
         <div class="reihe"><span class="leise">Ende setzen auf:</span>${[1,2,3,4].map(w => `<button data-zrwochen="${w}">${w} Woche${w > 1 ? "n" : ""} nach Start</button>`).join("")}</div>
-        <div class="reihe" style="margin-bottom:0"><span class="leise">Jahre:</span>${S.jahre.map(n => `<button data-zrjahre="${n}">${n} Jahre</button>`).join("")}</div>
+        <div class="reihe"><span class="leise">Jahre:</span>${S.jahre.map(n => `<button data-zrjahre="${n}">${n} Jahre</button>`).join("")}</div>
+        <div class="reihe" style="margin-bottom:0"><span class="leise">Zahlen aus:</span><button data-zrquelle="kassa">Kassakurs (FRED)</button><button data-zrquelle="future">Future (Yahoo, wie Seasonax)</button>
+          <span class="leise kurz">Die Ampel nutzt immer beide Quellen.</span></div>
       </div>
       <div class="karte scroll" style="margin-top:10px"><table id="zrTabelle" style="min-width:760px"></table></div>
       <div class="leise kurz" id="zrHinweis" style="margin-top:6px"></div>
@@ -377,11 +382,30 @@ function zeitraum() {
   setze("zrSd", zrOpt(1, 31, ZR.start[1])); setze("zrSm", zrOpt(1, 12, ZR.start[0], MON));
   setze("zrEd", zrOpt(1, 31, ZR.ende[1])); setze("zrEm", zrOpt(1, 12, ZR.ende[0], MON));
   el.querySelectorAll("[data-zrjahre]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.zrjahre === ZR.n)));
+  el.querySelectorAll("[data-zrquelle]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.zrquelle === ZR.quelle)));
 
-  const erg = {};
-  DATA.maerkte.forEach(m => { const d = zrDaten(m); erg[m] = zeitraumRechnen(d.tage, d.preise, ZR.start, ZR.ende, ZR.n, S.bis_jahr); });
+  const ergK = {}, ergF = {}, erg = {};
+  DATA.maerkte.forEach(m => {
+    const dk = zrDaten(m, "kassa"), df = zrDaten(m, "future");
+    ergK[m] = zeitraumRechnen(dk.tage, dk.preise, ZR.start, ZR.ende, ZR.n, S.bis_jahr);
+    ergF[m] = df ? zeitraumRechnen(df.tage, df.preise, ZR.start, ZR.ende, ZR.n, S.bis_jahr) : null;
+    erg[m] = ZR.quelle === "future" && ergF[m] ? ergF[m] : ergK[m];
+  });
   const f = (x, d = 2) => x === null ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
-  const ampelText = {long: "Long-Kandidat", short: "Short-Kandidat", neutral: "–"};
+  const ampelName = {long: "Long", short: "Short", neutral: "neutral"};
+  const ampelZelle = m => {
+    const k = ergK[m].ampel, fu = ergF[m] ? ergF[m].ampel : null, kb = zampelKombi(k, fu);
+    const farbe = kb.status === "long" ? "var(--gruen)" : kb.status === "short" ? "var(--rot)" : kb.status === "widerspruch" ? "var(--gelb)" : "var(--leise)";
+    let titel, zusatz;
+    if (kb.status === "neutral" && kb.stabil !== false) { titel = "–"; zusatz = fu === null ? "nur Kassa" : ""; }
+    else if (kb.status === "widerspruch") { titel = "Widerspruch"; zusatz = "Kassa " + ampelName[k] + ", Future " + ampelName[fu]; }
+    else {
+      titel = (kb.status === "long" ? "Long-Kandidat" : "Short-Kandidat");
+      zusatz = kb.stabil === true ? "stabil (beide Quellen)" : kb.stabil === false ? "wackelig: Kassa " + ampelName[k] + ", Future " + ampelName[fu] : "nur Kassa (kein Future)";
+    }
+    const wack = kb.stabil === false;
+    return `<td class="sz"><b style="color:${farbe};${wack ? "opacity:.7" : ""}">${titel}</b><small class="leise" style="display:block">${zusatz}</small></td>`;
+  };
   const zeilen = DATA.maerkte.map(m => {
     const r = erg[m], au = r.plus === null ? 0 : zrAuffaellig(r.plus, r.n);
     const rahmen = au ? ` rand${au < 0 ? " minus" : ""}` : "";
@@ -391,7 +415,7 @@ function zeitraum() {
       `<td class="sz">${f(r.mean)} %</td><td class="sz">${f(r.median)} %</td><td class="sz">${r.std === null ? "–" : r.std.toFixed(2).replace(".", ",") + " %"}</td>` +
       `<td class="sz">${f(r.jahresrendite, 1)} %</td><td class="sz">${r.schwankung === null ? "–" : r.schwankung.toFixed(1).replace(".", ",") + " %"}</td>` +
       `<td class="sz"><b>${f(r.sharpe)}</b></td>` +
-      `<td class="sz"><b style="color:${r.ampel === "long" ? "var(--gruen)" : r.ampel === "short" ? "var(--rot)" : "var(--leise)"}">${ampelText[r.ampel]}</b></td></tr>`;
+      ampelZelle(m) + `</tr>`;
   }).join("");
   document.getElementById("zrTabelle").innerHTML =
     `<thead><tr><th class="markt">Markt</th><th>Winrate</th><th>Ø Rendite</th><th>Median</th><th>Streuung</th><th>Jahresrendite<small>hochgerechnet</small></th><th>Schwankung<small>pro Jahr</small></th><th>Sharpe</th><th>Ampel</th></tr></thead><tbody>${zeilen}</tbody>`;
@@ -401,7 +425,7 @@ function zeitraum() {
   const T = r0.kalendertage;
   const g = S.zufall[String(ZR.n)];
   document.getElementById("zrHinweis").textContent =
-    `Fenster: ${ZR.start[1]}. ${MON[ZR.start[0] - 1]} bis ${ZR.ende[1]}. ${MON[ZR.ende[0] - 1]} (${T} Kalendertage), ${ZR.n} abgeschlossene Jahre bis ${S.bis_jahr}. Ampel nach deiner Regel: Long-Kandidat ab Winrate 60 % und Sharpe +1, Short-Kandidat bis Winrate 40 % und Sharpe −1. ` +
+    `Fenster: ${ZR.start[1]}. ${MON[ZR.start[0] - 1]} bis ${ZR.ende[1]}. ${MON[ZR.ende[0] - 1]} (${T} Kalendertage), ${ZR.n} abgeschlossene Jahre bis ${S.bis_jahr}. Ampel nach deiner Regel: Long-Kandidat ab Winrate 60 % und Sharpe +1, Short-Kandidat bis Winrate 40 % und Sharpe −1, gerechnet mit Kassakurs und Future. „stabil“ = beide Quellen kommen zum selben Ergebnis, „wackelig“ = nur eine Quelle sagt Long oder Short (dann nicht ernst nehmen). Start und Ende zählen wie bei Seasonax jeweils der erste Handelstag ab dem Datum. ` +
     (g ? `Rahmen um die Winrate = nicht mehr mit einer Münze erklärbar (ab ${g} von ${ZR.n} Jahren Plus oder ${ZR.n - g} und weniger). ` : `Bei ${ZR.n} Jahren ist selbst 5 von 5 noch Zufall, deshalb keine Rahmen. `) +
     `Achtung Auswahl-Effekt: Wer viele Zeiträume ausprobiert, findet immer einen mit gutem Sharpe. Ob die Regel in der Praxis trägt, prüft Etappe 2c.`;
   const m = ZR.markt, r = erg[m];
@@ -412,8 +436,8 @@ function zeitraum() {
     {margin: {l: 52, r: 12, t: 10, b: 36}, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: {color: text, size: 12}, dragmode: false,
      yaxis: {gridcolor: linie, zerolinecolor: leise, ticksuffix: " %"}, xaxis: {type: "category", gridcolor: linie}}, {responsive: true, displaylogo: false, displayModeBar: false});
   document.getElementById("zrNotiz").textContent =
-    `Sharpe = (Jahresrendite − ${ZEITRAUM_ZINS.toString().replace(".", ",")} % Zins) geteilt durch die Jahres-Schwankung, beides aus den Tagesrenditen im Fenster hochgerechnet (wie bei Seasonax, dort steht beim Beispiel 6E 22.10. bis 10.11. Sharpe −2,33, hier −2,26). ` +
-    `Die Jahresrendite entsteht aus sehr kurzen Fenstern und wirkt deshalb übertrieben groß. Kleinere Abweichungen zu Seasonax sind normal (Kassakurse statt Futures). Klicke auf eine Zeile, um die Einzeljahre eines Marktes zu sehen.`;
+    `Sharpe = (Jahresrendite − ${ZEITRAUM_ZINS.toString().replace(".", ",")} % Zins) geteilt durch die Jahres-Schwankung, beides aus den Tagesrenditen im Fenster hochgerechnet. Das ist eine eigene Kennzahl, die der von Seasonax ähnelt, aber nicht gleich ist: Bei langen Fenstern passt sie fast (6E 22.10. bis 10.11.: −2,31 gegen −2,33), bei Fenstern von ein bis zwei Wochen liegt der Seasonax-Wert oft deutlich darunter (6E 12. bis 19.10.: bei uns +1,9 bis +2,2, bei Seasonax +1,2). Die Winrate ist dagegen fast gleich. Die Jahresrendite entsteht aus sehr kurzen Fenstern und wirkt deshalb übertrieben groß. ` +
+    `Die Future-Reihe ist von Kontraktwechseln bereinigt (Yahoo, inoffiziell). Beim Yen zeigt Seasonax nur 7 bis 8 Jahre als „Trades“, dort weichen die Zahlen ab. Klicke auf eine Zeile, um die Einzeljahre eines Marktes zu sehen.`;
 }
 
 function aufbau() {
@@ -428,6 +452,7 @@ function aufbau() {
     if (b.dataset.smarkt) { sM = b.dataset.smarkt; saison(); }
     if (b.dataset.sansicht) { sAnsicht = b.dataset.sansicht; saison(); }
     if (b.dataset.zrjahre) { ZR.n = +b.dataset.zrjahre; zeitraum(); }
+    if (b.dataset.zrquelle) { ZR.quelle = b.dataset.zrquelle; zeitraum(); }
     if (b.dataset.zrwochen) { ZR.ende = zrPlusTage(ZR.start, 7 * +b.dataset.zrwochen); zeitraum(); }
   });
   markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum();
