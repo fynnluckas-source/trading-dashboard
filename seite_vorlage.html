@@ -33,6 +33,7 @@
   .leise { color: var(--leise); }
   .karte { background: var(--karte); border: 1px solid var(--linie); border-radius: 10px; padding: 14px 16px; }
   .status { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 12px; }
+  .quellen { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
   .punkt { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
   .gruen { background: var(--gruen); } .gelb { background: var(--gelb); } .rot { background: var(--rot); }
   .reihe { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
@@ -117,7 +118,12 @@ function status() {
   document.getElementById("status").innerHTML =
     `<span><span class="punkt ${farbe}"></span><b>COT ${text}</b>: Stichtag ${datum(DATA.stand)} (Alter ${DATA.alter} Tage)</span>` +
     `<span class="leise">Seite gebaut am ${DATA.gebaut}</span>`;
+  const QF = {OK: "gruen", GELB: "gelb", ROT: "rot"};
+  document.getElementById("status").insertAdjacentHTML("beforeend",
+    `<span class="quellen">` + DATA.quellen.map(q => `<span class="leise" title="${q.text}"><span class="punkt ${QF[q.status] || "rot"}"></span>${q.quelle}</span>`).join("") + `</span>`);
   const h = [];
+  const stunden = (Date.now() - new Date(DATA.gebaut_iso).getTime()) / 36e5;
+  if (stunden > 36) h.push(`Die Seite wurde zuletzt vor ${Math.round(stunden)} Stunden aktualisiert. Der tägliche Lauf bei GitHub ist vermutlich ausgefallen (GitHub, Reiter „Actions“ prüfen).`);
   if (farbe !== "gruen") h.push(`COT-Daten sind ${DATA.alter} Tage alt. Normal sind bis zu 10 Tage (Stichtag Dienstag, Veröffentlichung Freitag).`);
   if (DATA.kurs_fehler.length) h.push(`Kurse konnten nicht geladen werden für: ${DATA.kurs_fehler.join(", ")}. Die Charts zeigen dort nur die COT-Linien.`);
   document.getElementById("hinweise").innerHTML = h.map(t => `<div class="karte warn" style="margin-top:10px">${t}</div>`).join("");

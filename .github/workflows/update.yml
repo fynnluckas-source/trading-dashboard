@@ -1,0 +1,88 @@
+name: Dashboard aktualisieren
+
+on:
+  schedule:
+    - cron: "15 6 * * *"   # täglich 06:15 UTC (08:15 Uhr deutscher Sommerzeit)
+  workflow_dispatch:        # Knopf "Run workflow" für einen Lauf von Hand
+
+permissions:
+  contents: write           # Daten-CSV zurück ins Repository speichern
+  pages: write              # Seite veröffentlichen
+  id-token: write
+
+concurrency:
+  group: dashboard
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Bibliotheken installieren
+        run: pip install -r requirements.txt
+
+      - name: Daten holen und Seite bauen
+        id: update
+        continue-on-error: true   # die Seite wird auch bei einer kaputten Quelle veröffentlicht
+        run: python update.py
+
+      - name: Daten ins Repository speichern
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add daten/*.csv
+          if ! git diff --cached --quiet; then
+            git commit -m "Daten aktualisiert $(date -u +%F)"
+            git push
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Seite mit Zugangscode verschlüsseln
+        env:
+          SEITEN_CODE: ${{ secrets.SEITEN_CODE }}
+        run: |
+          if [ -z "$SEITEN_CODE" ]; then
+            echo "::error::Das Secret SEITEN_CODE fehlt (GitHub, Settings, Secrets and variables, Actions)."
+            exit 1
+          fi
+          if [ ${#SEITEN_CODE} -lt 20 ]; then
+            echo "::error::Der Zugangscode ist zu kurz (mindestens 20 Zeichen)."
+            exit 1
+          fi
+          npx --yes staticrypt@3.5.4 docs/index.html -p "$SEITEN_CODE" --short --remember 30 -d public \
+            --template-title "Trading Dashboard" \
+            --template-instructions "Zugangscode eingeben" \
+            --template-placeholder "Zugangscode" \
+            --template-button "Öffnen" \
+            --template-error "Falscher Code" \
+            --template-remember "Auf diesem Gerät merken (30 Tage)" \
+            --template-color-primary "#2b5fd9" \
+            --template-color-secondary "#0f1218"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Seite veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Lauf als fehlgeschlagen markieren, wenn eine Quelle kaputt war
+        if: steps.update.outcome == 'failure'
+        run: |
+          echo "::error::Mindestens eine Datenquelle war kaputt, siehe Schritt 'Daten holen und Seite bauen'. Die Seite wurde trotzdem veröffentlicht."
+          exit 1

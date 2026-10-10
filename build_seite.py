@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import check_quellen
 import config
 import kennzahlen as kz
 
@@ -49,7 +50,7 @@ def zahl(x, ndigits=None):
     return round(float(x), ndigits) if ndigits is not None else float(x)
 
 
-def baue():
+def baue(quellen=None):
     legacy = pd.read_csv(HIER / "daten" / "cot_legacy.csv", parse_dates=["datum"])
     tff = pd.read_csv(HIER / "daten" / "cot_tff.csv", parse_dates=["datum"])
     k = kz.kennzahlen(legacy, tff)
@@ -81,7 +82,15 @@ def baue():
             s["kurs"] = [zahl(v, 6) for v in kurs]
         serie[m] = s
 
+    if quellen is None:
+        try:
+            quellen = check_quellen.alle()
+        except Exception as e:
+            print(f"::warning::Quellenprüfung fehlgeschlagen: {e}")
+            quellen = []
+    jetzt = datetime.now(timezone.utc)
     daten = {
+        "gebaut_iso": jetzt.strftime("%Y-%m-%dT%H:%M:%SZ"), "quellen": quellen,
         "stand": stand.strftime("%Y-%m-%d"), "alter": int(alter), "ampel": ampel(alter),
         "gebaut": datetime.now().strftime("%d.%m.%Y %H:%M"), "maerkte": maerkte,
         "gruppen": {g: {"name": v[2], "text": v[3], "bericht": v[0]} for g, v in kz.GRUPPEN.items()},

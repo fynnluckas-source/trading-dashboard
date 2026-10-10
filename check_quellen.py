@@ -14,6 +14,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 HEUTE = pd.Timestamp(datetime.now(timezone.utc).date())
 ERGEBNISSE = []
+DETAILS = []  # je Quelle: Name, Status (OK/GELB/ROT), Text, Alter in Tagen
 
 
 def ampel(quelle, letztes_datum):
@@ -28,6 +29,7 @@ def zeige(quelle, detail, status=None, alter=None):
         text += f" (Alter {alter} Tage)"
     print(text)
     ERGEBNISSE.append(status or "OK  ")
+    DETAILS.append({"quelle": quelle, "status": (status or "OK  ").strip(), "text": detail, "alter": alter})
 
 
 def cot():
@@ -141,8 +143,20 @@ def ezb_eurostat():
         zeige("Eurostat", f"Fehler: {e}", "ROT ")
 
 
+def alle():
+    """Prüft alle Quellen und gibt die Einzelergebnisse zurück (Liste von Wörterbüchern)."""
+    ERGEBNISSE.clear()
+    DETAILS.clear()
+    for f in (cot, yahoo, fred, bis, ezb_eurostat):
+        try:
+            f()
+        except Exception as e:  # eine kaputte Prüfung darf die anderen nicht stoppen
+            zeige(f.__name__, f"Prüfung abgestürzt: {e}", "ROT ")
+    return list(DETAILS)
+
+
 if __name__ == "__main__":
     print(f"Quellen-Prüfung vom {HEUTE.date()}\n")
-    cot(); yahoo(); fred(); bis(); ezb_eurostat()
+    alle()
     rot = ERGEBNISSE.count("ROT ")
     print(f"\n{'ALLES OK' if rot == 0 and 'GELB' not in ERGEBNISSE else str(rot) + ' Quelle(n) ROT, ' + str(ERGEBNISSE.count('GELB')) + ' GELB'}")
