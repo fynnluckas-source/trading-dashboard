@@ -23,7 +23,7 @@ for m in maerkte:
         continue
     a = legacy[legacy["markt"] == m].iloc[-1]
     b = tff[tff["markt"] == m].iloc[-1]
-    print(f"{m} ({config.MAERKTE[m]['name']}), Stichtag {a['datum']:%d.%m.%Y}, Open Interest {a['oi']:,.0f}".replace(",", "."))
+    print(f"{m} ({config.MAERKTE[m]['name']}), Stichtag {a['datum']:%d.%m.%Y}, Open Interest " + f"{a['oi']:,.0f}".replace(",", "."))
     print(f"  Legacy  Großspekulanten  Long {a['spec_long']:>9,.0f}  Short {a['spec_short']:>9,.0f}  Netto {a['spec_long'] - a['spec_short']:>+9,.0f}".replace(",", "."))
     print(f"  Legacy  Commercials      Long {a['comm_long']:>9,.0f}  Short {a['comm_short']:>9,.0f}  Netto {a['comm_long'] - a['comm_short']:>+9,.0f}".replace(",", "."))
     print(f"  TFF     Leveraged Funds  Long {b['lev_long']:>9,.0f}  Short {b['lev_short']:>9,.0f}  Netto {b['lev_long'] - b['lev_short']:>+9,.0f}".replace(",", "."))
