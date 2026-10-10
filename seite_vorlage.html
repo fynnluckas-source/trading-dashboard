@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trading Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root {
+    --bg: #f6f7f9; --karte: #ffffff; --text: #1b1f27; --leise: #5b6472; --linie: #dfe3ea;
+    --hoch: 59, 130, 246;   /* Index hoch: Blau */
+    --tief: 245, 158, 11;   /* Index tief: Orange */
+    --gruen: #1a8a4a; --gelb: #b7791f; --rot: #c53030; --akzent: #2b5fd9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1218; --karte: #171b23; --text: #e8ebf0; --leise: #98a1b0; --linie: #2a303b;
+      --hoch: 96, 165, 250; --tief: 251, 176, 64;
+      --gruen: #4ade80; --gelb: #fbbf24; --rot: #f87171; --akzent: #7aa2ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1218; --karte: #171b23; --text: #e8ebf0; --leise: #98a1b0; --linie: #2a303b;
+    --hoch: 96, 165, 250; --tief: 251, 176, 64;
+    --gruen: #4ade80; --gelb: #fbbf24; --rot: #f87171; --akzent: #7aa2ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; }
+  .leise { color: var(--leise); }
+  .karte { background: var(--karte); border: 1px solid var(--linie); border-radius: 10px; padding: 14px 16px; }
+  .status { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 12px; }
+  .punkt { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .gruen { background: var(--gruen); } .gelb { background: var(--gelb); } .rot { background: var(--rot); }
+  .reihe { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
+  button { font: inherit; color: var(--text); background: var(--karte); border: 1px solid var(--linie);
+           border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button[aria-pressed="true"] { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+  button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 640px; }
+  th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--linie); }
+  th { font-weight: 600; font-size: 13px; vertical-align: bottom; }
+  th small { display: block; font-weight: 400; color: var(--leise); }
+  td.markt, th.markt { text-align: left; position: sticky; left: 0; background: var(--karte); z-index: 1; }
+  td.markt b { display: block; }
+  td.zelle { min-width: 96px; }
+  td.zelle b { font-size: 17px; display: block; line-height: 1.2; }
+  td.zelle small { display: block; color: var(--leise); font-size: 12px; line-height: 1.3; }
+  td.zelle.extrem { box-shadow: inset 0 0 0 2px rgba(var(--hoch), .9); }
+  td.zelle.extrem.tief { box-shadow: inset 0 0 0 2px rgba(var(--tief), .95); }
+  .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--leise); margin-top: 10px; }
+  .farbe { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  #chart { width: 100%; height: 520px; }
+  dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; }
+  dt { font-weight: 600; } dd { margin: 0; color: var(--leise); }
+  @media (max-width: 600px) { dl { grid-template-columns: 1fr; } dd { margin-bottom: 6px; } #chart { height: 440px; } }
+  .warn { border-left: 4px solid var(--gelb); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Trading Dashboard</h1>
+  <div class="leise">COT-Positionierung der 8 Währungsfutures (CFTC). Etappe 1b: Kennzahlen, noch ohne Bewertung.</div>
+
+  <div class="karte status" id="status"></div>
+  <div id="hinweise"></div>
+
+  <h2>Übersicht: COT-Index</h2>
+  <div class="leise">Der Index zeigt, wo die Netto-Position der Gruppe im Bereich der letzten Wochen steht: 0 = tiefster Wert, 100 = höchster Wert. Darunter stehen die Netto-Position (Long minus Short, in Kontrakten) und die Veränderung zur Vorwoche.</div>
+  <div class="reihe" role="group" aria-label="Zeitraum des Index">
+    <span class="leise">Zeitraum:</span>
+    <button data-fenster="26">26 Wochen</button>
+    <button data-fenster="52">52 Wochen</button>
+    <button data-fenster="156">156 Wochen (3 Jahre)</button>
+  </div>
+  <div class="karte scroll"><table id="tabelle"></table></div>
+  <div class="legende">
+    <span><span class="farbe" style="background:rgb(var(--hoch))"></span>Index hoch (Rahmen ab 80)</span>
+    <span><span class="farbe" style="background:rgb(var(--tief))"></span>Index tief (Rahmen bis 20)</span>
+    <span>Die Farben bedeuten nur „hoch“ und „tief“, noch nicht „bullisch“ oder „bärisch“. Das klärt erst die Prüfung in Etappe 1d.</span>
+  </div>
+
+  <h2>Verlauf je Markt</h2>
+  <div class="reihe" id="marktwahl" role="group" aria-label="Markt"></div>
+  <div class="reihe" role="group" aria-label="Bericht">
+    <span class="leise">Gruppen:</span>
+    <button data-bericht="legacy">Legacy (wie dein TradingView-Indikator)</button>
+    <button data-bericht="tff">TFF</button>
+  </div>
+  <div class="karte"><div id="chart"></div></div>
+  <div class="leise" id="chartnotiz" style="margin-top:6px"></div>
+
+  <h2>Was sind die Gruppen?</h2>
+  <div class="karte"><dl id="gruppen"></dl></div>
+</main>
+
+<script>
+const DATA = __DATEN__;
+
+const GRUPPENFARBE = {spec:"#e5484d", comm:"#3b82f6", small:"#22a06b", lev:"#f59e0b", am:"#a855f7"};
+const BERICHT = {legacy:["spec","comm","small"], tff:["lev","am"]};
+const ALLE = ["spec","comm","small","lev","am"];
+let fenster = 52, bericht = "legacy", markt = DATA.maerkte[0];
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function zahl(x) { return x === null || x === undefined ? "–" : Math.round(x).toLocaleString("de-DE"); }
+function vz(x) { return x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(Math.round(x)).toLocaleString("de-DE"); }
+function datum(s) { const [j,m,t] = s.split("-"); return `${t}.${m}.${j}`; }
+
+function status() {
+  const farbe = DATA.ampel;
+  const text = {gruen:"aktuell", gelb:"verspätet", rot:"veraltet"}[farbe];
+  document.getElementById("status").innerHTML =
+    `<span><span class="punkt ${farbe}"></span><b>COT ${text}</b>: Stichtag ${datum(DATA.stand)} (Alter ${DATA.alter} Tage)</span>` +
+    `<span class="leise">Seite gebaut am ${DATA.gebaut}</span>`;
+  const h = [];
+  if (farbe !== "gruen") h.push(`COT-Daten sind ${DATA.alter} Tage alt. Normal sind bis zu 10 Tage (Stichtag Dienstag, Veröffentlichung Freitag).`);
+  if (DATA.kurs_fehler.length) h.push(`Kurse konnten nicht geladen werden für: ${DATA.kurs_fehler.join(", ")}. Die Charts zeigen dort nur die COT-Linien.`);
+  document.getElementById("hinweise").innerHTML = h.map(t => `<div class="karte warn" style="margin-top:10px">${t}</div>`).join("");
+}
+
+function tabelle() {
+  let kopf = `<tr><th class="markt">Markt</th>` + ALLE.map(g =>
+    `<th>${DATA.gruppen[g].name}<small>${DATA.gruppen[g].bericht.toUpperCase()}</small></th>`).join("") + `</tr>`;
+  const zeilen = DATA.maerkte.map(m => {
+    const L = DATA.latest[m];
+    const zellen = ALLE.map(g => {
+      const d = L.gruppen[g];
+      const idx = d["idx" + fenster];
+      let stil = "", klasse = "zelle";
+      if (idx !== null) {
+        const t = Math.abs(idx - 50) / 50;
+        const rgb = idx >= 50 ? "var(--hoch)" : "var(--tief)";
+        stil = `background: rgba(${rgb}, ${(t * 0.5).toFixed(2)});`;
+        if (idx >= 80) klasse += " extrem"; else if (idx <= 20) klasse += " extrem tief";
+      }
+      const tip = `Netto ${vz(d.net)} Kontrakte (${d.net_pct === null ? "–" : d.net_pct.toFixed(1).replace(".", ",")} % vom Open Interest)`;
+      return `<td class="${klasse}" style="${stil}" title="${tip}"><b>${idx === null ? "–" : Math.round(idx)}</b>` +
+             `<small>${vz(d.net)}</small><small>Δ ${vz(d.d_net)}</small></td>`;
+    }).join("");
+    return `<tr><td class="markt"><b>${m}</b><span class="leise">${L.name}</span></td>${zellen}</tr>`;
+  }).join("");
+  document.getElementById("tabelle").innerHTML = `<thead>${kopf}</thead><tbody>${zeilen}</tbody>`;
+  document.querySelectorAll("[data-fenster]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.fenster === fenster)));
+}
+
+function chart() {
+  const s = DATA.serie[markt];
+  const text = css("--text"), leise = css("--leise"), linie = css("--linie");
+  const spuren = [];
+  const hatKurs = s.kurs.some(v => v !== null);
+  if (hatKurs) spuren.push({x: s.datum, y: s.kurs, name: "Kurs", type: "scatter", mode: "lines",
+      line: {color: text, width: 1.5}, xaxis: "x", yaxis: "y", hovertemplate: "%{y:.5g}<extra>Kurs</extra>"});
+  BERICHT[bericht].forEach(g => {
+    spuren.push({x: s.datum, y: s[g], name: DATA.gruppen[g].name, type: "scatter", mode: "lines",
+      line: {color: GRUPPENFARBE[g], width: 1.6}, xaxis: "x", yaxis: "y2",
+      hovertemplate: "%{y:,.0f}<extra>" + DATA.gruppen[g].name + "</extra>"});
+  });
+  const heute = new Date(s.datum[s.datum.length - 1]);
+  const von = new Date(heute); von.setFullYear(von.getFullYear() - 3);
+  const layout = {
+    margin: {l: 62, r: 14, t: 10, b: 40}, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    font: {color: text, size: 12}, hovermode: "x unified", dragmode: "pan",
+    legend: {orientation: "h", y: -0.12},
+    xaxis: {range: [von.toISOString().slice(0,10), s.datum[s.datum.length - 1]], gridcolor: linie, anchor: "y2",
+      rangeselector: {bgcolor: "rgba(0,0,0,0)", activecolor: linie, font: {color: text}, buttons: [
+        {count: 1, label: "1J", step: "year", stepmode: "backward"}, {count: 3, label: "3J", step: "year", stepmode: "backward"},
+        {count: 10, label: "10J", step: "year", stepmode: "backward"}, {step: "all", label: "Alles"}]}},
+    yaxis: {domain: hatKurs ? [0.56, 1] : [0.99, 1], gridcolor: linie, title: {text: hatKurs ? "Kurs" : ""}, visible: hatKurs},
+    yaxis2: {domain: hatKurs ? [0, 0.5] : [0, 1], gridcolor: linie, zerolinecolor: leise, title: {text: "Netto-Position (Kontrakte)"}},
+  };
+  Plotly.react("chart", spuren, layout, {responsive: true, displaylogo: false, scrollZoom: false,
+    modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"]});
+  yAnpassen();
+  const el = document.getElementById("chart");
+  if (!el.dataset.verbunden) {
+    el.dataset.verbunden = "1";
+    el.on("plotly_relayout", ev => { if (Object.keys(ev).some(k => k.startsWith("xaxis.range") || k === "xaxis.autorange")) yAnpassen(); });
+  }
+  document.getElementById("chartnotiz").textContent =
+    bericht === "legacy" ? "Rot, Blau, Grün: wie die drei Linien deines TradingView-Indikators (Großspekulanten, Commercials, Kleinanleger)."
+                         : "TFF-Bericht ab 2006. Hier gibt es keine Entsprechung in deinem TradingView-Indikator.";
+}
+
+function yAnpassen() {
+  // y-Achsen an den sichtbaren Zeitraum anpassen (sonst zählt die ganze Historie ab 2000)
+  const el = document.getElementById("chart");
+  if (!el.layout || !el.data) return;
+  const [a, b] = el.layout.xaxis.range.map(v => new Date(v).getTime());
+  const grenzen = {y: [Infinity, -Infinity], y2: [Infinity, -Infinity]};
+  el.data.forEach(sp => {
+    const g = grenzen[sp.yaxis];
+    sp.x.forEach((x, i) => { const t = new Date(x).getTime(), v = sp.y[i];
+      if (v !== null && t >= a && t <= b) { g[0] = Math.min(g[0], v); g[1] = Math.max(g[1], v); } });
+  });
+  const upd = {};
+  [["y", "yaxis"], ["y2", "yaxis2"]].forEach(([k, name]) => {
+    const [lo, hi] = grenzen[k]; if (!isFinite(lo)) return;
+    const pad = (hi - lo) * 0.06 || 1; upd[name + ".range"] = [lo - pad, hi + pad];
+  });
+  Plotly.relayout(el, upd);
+}
+
+function aufbau() {
+  document.getElementById("marktwahl").innerHTML = DATA.maerkte.map(m => `<button data-markt="${m}">${m}</button>`).join("");
+  document.getElementById("gruppen").innerHTML = ALLE.map(g => `<dt>${DATA.gruppen[g].name}</dt><dd>${DATA.gruppen[g].text}</dd>`).join("");
+  document.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.fenster) { fenster = +b.dataset.fenster; tabelle(); }
+    if (b.dataset.markt) { markt = b.dataset.markt; markte(); chart(); }
+    if (b.dataset.bericht) { bericht = b.dataset.bericht; berichte(); chart(); }
+  });
+  markte(); berichte(); status(); tabelle(); chart();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(chart, 50));
+}
+function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }
+function berichte() { document.querySelectorAll("[data-bericht]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.bericht === bericht))); }
+aufbau();
+</script>
+</body>
+</html>
