@@ -59,6 +59,9 @@
   dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; }
   dt { font-weight: 600; } dd { margin: 0; color: var(--leise); }
   @media (max-width: 600px) { dl { grid-template-columns: 1fr; } dd { margin-bottom: 6px; } #chart { height: 440px; } }
+  td.pz { min-width: 118px; } td.pz b { display: block; }
+  td.pz.ja { box-shadow: inset 0 0 0 2px var(--gruen); }
+  .kurz { font-size: 13px; }
   .warn { border-left: 4px solid var(--gelb); }
 </style>
 </head>
@@ -94,6 +97,8 @@
   </div>
   <div class="karte"><div id="chart"></div></div>
   <div class="leise" id="chartnotiz" style="margin-top:6px"></div>
+
+  <div id="pruefung"></div>
 
   <h2>Was sind die Gruppen?</h2>
   <div class="karte"><dl id="gruppen"></dl></div>
@@ -211,6 +216,30 @@ function yAnpassen() {
   Plotly.relayout(el, upd);
 }
 
+function pruefung() {
+  const P = DATA.pruefung; const el = document.getElementById("pruefung");
+  if (!P) { return; }
+  const fm = x => x === null ? "–" : x.toFixed(2).replace(".", ",").replace("-", "−");
+  const fp = x => x === null ? "–" : x.toFixed(2).replace(".", ",");
+  const zeilen = ["spec","comm","small","lev","am"].map(g => {
+    const zellen = [1,4,13].map(hh => {
+      const e = P.ergebnisse.find(r => r.gruppe === g && r.h === hh);
+      return `<td class="pz ${e.bestanden ? "ja" : ""}" title="Training: D ${fm(e.d_training)}, p ${fp(e.p_training)}. Test: Mittel nach hoch ${fm(e.mittel_hoch_test)}, nach tief ${fm(e.mittel_tief_test)}, alle Wochen ${fm(e.mittel_alle_test)}. Signale im Test: ${e.n_hoch_test} hoch, ${e.n_tief_test} tief in ${e.phasen_test} Phasen.">` +
+        `<b>${e.bestanden ? "bestanden" : "nicht bestanden"}</b><small class="kurz">Training: ${e.richtung}<br>Test D ${fm(e.d_test)}, p ${fp(e.p_test)}<br>${e.maerkte_einig} von ${e.maerkte_gueltig} Märkten einig</small></td>`;
+    }).join("");
+    return `<tr><td class="markt"><b>${DATA.gruppen[g].name}</b></td>${zellen}</tr>`;
+  }).join("");
+  el.innerHTML = `<h2>Prüfung COT (Etappe 1d)</h2>` +
+    `<div class="karte"><p style="margin-top:0"><b>Ergebnis: ${P.anzahl_bestanden === 0 ? "Keine Gruppe hat die Prüfung bestanden." : P.anzahl_bestanden + " von " + P.anzahl_tests + " Tests bestanden."}</b> ` +
+    `Durch reinen Zufall wären etwa ${String(P.erwartet_zufall).replace(".", ",")} bestandene Tests zu erwarten gewesen. ` +
+    `${P.anzahl_bestanden === 0 ? "Ein extremer COT-Index hat bei diesen 8 Märkten keine verlässliche Vorhersagekraft für die nächsten 1, 4 oder 13 Wochen gezeigt. Der COT bleibt deshalb eine Information ohne Punkte im Punktesystem." : "Bei bestandenen Tests bitte die Einzelwerte prüfen, bevor sie Punkte bekommen."}</p>` +
+    `<div class="scroll"><table style="min-width:520px"><thead><tr><th class="markt">Gruppe</th><th>1 Woche</th><th>4 Wochen</th><th>13 Wochen</th></tr></thead><tbody>${zeilen}</tbody></table></div>` +
+    `<p class="leise kurz" style="margin-bottom:0"><b>So wurde geprüft:</b> Signal = COT-Index über ${P.fenster} Wochen ab ${P.schwelle_hoch} („hoch“) bzw. bis ${P.schwelle_tief} („tief“). Gemessen wird die Kursänderung nach dem Signal in Schwankungs-Einheiten, Einstieg erst am Handelstag nach der Veröffentlichung. ` +
+    `D = Mittel nach „hoch“ minus Mittel nach „tief“ (D über 0: Mitläufer, unter 0: Kontra). Die Richtung wird nur auf den ersten 70 % (${P.zeitraum_von} bis ${P.split}) festgelegt und auf den letzten 30 % (bis ${P.zeitraum_bis}) geprüft. ` +
+    `Bestanden nur, wenn dort D dieselbe Richtung hat, der Zufallstest (${P.n_perm} Verschiebungen) p unter 0,05 ergibt und mindestens 5 von 8 Märkten dieselbe Richtung zeigen. ` +
+    `Ein Effekt hätte etwa 0,25 (4 Wochen) bzw. 0,4 (13 Wochen) groß sein müssen, um aufzufallen. Kleinere Effekte können nicht ausgeschlossen werden. Stand der Rechnung: ${P.berechnet}, Kurse: FRED-Kassakurse und Yahoo-Index (DX).</p></div>`;
+}
+
 function aufbau() {
   document.getElementById("marktwahl").innerHTML = DATA.maerkte.map(m => `<button data-markt="${m}">${m}</button>`).join("");
   document.getElementById("gruppen").innerHTML = ALLE.map(g => `<dt>${DATA.gruppen[g].name}</dt><dd>${DATA.gruppen[g].text}</dd>`).join("");
@@ -220,7 +249,7 @@ function aufbau() {
     if (b.dataset.markt) { markt = b.dataset.markt; markte(); chart(); }
     if (b.dataset.bericht) { bericht = b.dataset.bericht; berichte(); chart(); }
   });
-  markte(); berichte(); status(); tabelle(); chart();
+  markte(); berichte(); status(); tabelle(); chart(); pruefung();
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(chart, 50));
 }
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }

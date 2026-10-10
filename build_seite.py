@@ -89,7 +89,10 @@ def baue(quellen=None):
             print(f"::warning::Quellenprüfung fehlgeschlagen: {e}")
             quellen = []
     jetzt = datetime.now(timezone.utc)
+    pfad_pruefung = HIER / "daten" / "pruefung_cot.json"
+    pruefung = json.loads(pfad_pruefung.read_text(encoding="utf-8")) if pfad_pruefung.exists() else None
     daten = {
+        "pruefung": pruefung,
         "gebaut_iso": jetzt.strftime("%Y-%m-%dT%H:%M:%SZ"), "quellen": quellen,
         "stand": stand.strftime("%Y-%m-%d"), "alter": int(alter), "ampel": ampel(alter),
         "gebaut": datetime.now().strftime("%d.%m.%Y %H:%M"), "maerkte": maerkte,
