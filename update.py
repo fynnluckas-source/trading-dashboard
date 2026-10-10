@@ -10,6 +10,7 @@ import build_seite
 import check_quellen
 import config
 import cot
+import kurse
 
 
 def main():
@@ -21,6 +22,13 @@ def main():
         except Exception as e:
             fehler.append(f"COT {art} konnte nicht geladen werden: {e}")
             print(f"::error::{fehler[-1]}")
+
+    try:
+        k = kurse.lade(neu=True)  # bei Fehler bleibt die alte Datei erhalten
+        print(f"Kurse: {k.shape[1]} Märkte bis {k.index.max().date()}")
+    except Exception as e:
+        fehler.append(f"Kurse konnten nicht geladen werden (alte Datei bleibt): {e}")
+        print(f"::error::{fehler[-1]}")
 
     quellen = check_quellen.alle()
     for q in quellen:
