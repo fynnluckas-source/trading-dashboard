@@ -62,6 +62,9 @@
   td.pz { min-width: 118px; } td.pz b { display: block; }
   td.pz.ja { box-shadow: inset 0 0 0 2px var(--gruen); }
   .kurz { font-size: 13px; }
+  #schart { width: 100%; height: 380px; }
+  td.sz { min-width: 58px; font-size: 13px; padding: 6px 4px; } td.sz.rand { box-shadow: inset 0 0 0 2px rgba(var(--hoch), .9); } td.sz.rand.minus { box-shadow: inset 0 0 0 2px rgba(var(--tief), .95); }
+  .grosszahl { font-size: 19px; font-weight: 600; }
   .warn { border-left: 4px solid var(--gelb); }
 </style>
 </head>
@@ -99,6 +102,8 @@
   <div class="leise" id="chartnotiz" style="margin-top:6px"></div>
 
   <div id="pruefung"></div>
+
+  <div id="saison"></div>
 
   <h2>Was sind die Gruppen?</h2>
   <div class="karte"><dl id="gruppen"></dl></div>
@@ -240,6 +245,86 @@ function pruefung() {
     `Ein Effekt hätte etwa 0,25 (4 Wochen) bzw. 0,4 (13 Wochen) groß sein müssen, um aufzufallen. Kleinere Effekte können nicht ausgeschlossen werden. Stand der Rechnung: ${P.berechnet}, Kurse: FRED-Kassakurse und Yahoo-Index (DX).</p></div>`;
 }
 
+
+let sM = DATA.maerkte[0], sN = "15", sAnsicht = "kurve";
+const MON = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+function pz(x, d = 2) { return x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",") + " %"; }
+function auffaellig(plus, n) { const g = DATA.saison.zufall[sN]; if (!g || !n) return 0; return plus >= g ? 1 : plus <= n - g ? -1 : 0; }
+
+function saison() {
+  const S = DATA.saison; const el = document.getElementById("saison");
+  if (!S) return;
+  if (!el.dataset.bereit) {
+    el.dataset.bereit = "1";
+    el.innerHTML = `<h2>Saisonalität (Etappe 2b)</h2>
+      <div class="leise">Wie hat sich der Kurs in den letzten 5, 10, 15 oder 25 <b>abgeschlossenen</b> Jahren (bis ${S.bis_jahr}) in diesem Monat, in dieser Woche und im Jahresverlauf entwickelt? Selbst gerechnet aus Kassakursen (DX: Index), ohne Rollsprünge.</div>
+      <div class="reihe" role="group" aria-label="Zeitraum"><span class="leise">Jahre:</span>${S.jahre.map(n => `<button data-sjahre="${n}">${n} Jahre</button>`).join("")}</div>
+      <div class="karte scroll"><table id="sUebersicht"></table></div>
+      <div class="leise kurz" id="sZufall" style="margin-top:6px"></div>
+      <h2 style="margin-top:22px" id="sTitel"></h2>
+      <div class="reihe" role="group" aria-label="Markt">${DATA.maerkte.map(m => `<button data-smarkt="${m}">${m}</button>`).join("")}</div>
+      <div class="karte" id="sAusblick"></div>
+      <div class="reihe" role="group" aria-label="Ansicht" style="margin-top:12px"><span class="leise">Ansicht:</span>
+        <button data-sansicht="kurve">Saisonkurve</button><button data-sansicht="monate">Monate</button><button data-sansicht="wochen">Wochen</button></div>
+      <div class="karte"><div id="schart"></div></div>
+      <div class="karte scroll" style="margin-top:10px"><table id="sMonate" style="min-width:760px"></table></div>
+      <div class="leise kurz" id="sNotiz" style="margin-top:6px"></div>`;
+  }
+  const D = S.maerkte[sM][sN], A = D.ausblick, g = S.zufall[sN];
+  document.querySelectorAll("[data-sjahre]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sjahre === sN)));
+  document.querySelectorAll("[data-smarkt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.smarkt === sM)));
+  document.querySelectorAll("[data-sansicht]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sansicht === sAnsicht)));
+  const ab = datum(S.ref).slice(0, 6);
+  const zeilen = DATA.maerkte.map(m => {
+    const a = S.maerkte[m][sN].ausblick, au = auffaellig(a.plus, a.n);
+    const klasse = "sz" + (au ? " rand" + (au < 0 ? " minus" : "") : "");
+    return `<tr><td class="markt"><b>${m}</b><span class="leise">${DATA.latest[m].name}</span></td>` +
+      `<td class="${klasse}"><b class="grosszahl">${pz(a.mean)}</b></td><td class="sz">${pz(a.median)}</td><td class="${klasse}"><b>${a.plus} von ${a.n}</b></td><td class="sz leise">${pz(a.basis_mean)}</td><td class="sz leise">${a.basis_hit.toFixed(0)} %</td></tr>`;
+  }).join("");
+  document.getElementById("sUebersicht").innerHTML = `<thead><tr><th class="markt">Markt</th><th>Ø nächste 4 Wochen<small>Einstieg ab ${ab}</small></th><th>Median</th><th>Jahre mit Plus</th><th>Zum Vergleich: Ø jedes 4-Wochen-Fenster</th><th>Anteil Plus normal</th></tr></thead><tbody>${zeilen}</tbody>`;
+  document.getElementById("sZufall").textContent = (g ? `Zufallsgrenze bei ${sN} Jahren: erst ${g} oder mehr Jahre mit Plus (oder ${sN - g} oder weniger) sind nicht mehr mit einer Münze erklärbar, diese Felder haben einen Rahmen. ` : `Bei ${sN} Jahren ist selbst 5 von 5 noch mit Zufall erklärbar, deshalb gibt es hier keine Rahmen. `) +
+    `Wer 8 Märkte, 12 Monate und 52 Wochen ansieht, findet immer einige auffällige Felder, und die 8 Märkte hängen zusammen (alle gegen den Dollar). Ob die Saisonalität wirklich trägt, prüft erst Etappe 2c.`;
+  document.getElementById("sTitel").textContent = `${sM} (${DATA.latest[sM].name}), ${sN} Jahre (${S.bis_jahr - sN + 1} bis ${S.bis_jahr})`;
+  const au = auffaellig(A.plus, A.n);
+  document.getElementById("sAusblick").innerHTML = `<b>Nächste 4 Wochen (${ab} bis ${new Date(new Date(S.ref).getTime() + A.tage * 864e5).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}):</b> ` +
+    `in ${A.plus} von ${A.n} Jahren stieg der Kurs (Ø ${pz(A.mean)}, Median ${pz(A.median)}). Normal sind ${A.basis_hit.toFixed(0)} % Plus-Jahre und Ø ${pz(A.basis_mean)}. ` +
+    (au ? `<b>Auffällig</b> (außerhalb der Zufallsgrenze), aber bitte die Einschränkungen unten lesen.` : `Im Rahmen des Zufalls.`);
+  const zm = D.monate;
+  const feld = (x) => { const a = auffaellig(x.plus, x.n); return `class="sz${a ? " rand" + (a < 0 ? " minus" : "") : ""}"`; };
+  document.getElementById("sMonate").innerHTML = `<thead><tr><th class="markt"></th>${MON.map(m => `<th>${m}</th>`).join("")}</tr></thead><tbody>` +
+    `<tr><td class="markt"><b>Ø</b></td>${zm.map(x => `<td ${feld(x)}>${pz(x.mean)}</td>`).join("")}</tr>` +
+    `<tr><td class="markt"><b>Median</b></td>${zm.map(x => `<td class="sz">${pz(x.median)}</td>`).join("")}</tr>` +
+    `<tr><td class="markt"><b>Plus-Jahre</b></td>${zm.map(x => `<td ${feld(x)}>${x.plus}/${x.n}</td>`).join("")}</tr></tbody>`;
+  document.getElementById("sNotiz").textContent = `Monatsrendite = Monatsende zu Monatsende. Jahre verfügbar für die Kurve: ${D.jahre_verfuegbar} von ${sN}. Die Saisonkurve ist der Durchschnitt der Verläufe ab Jahresbeginn, wie bei Seasonax, aber mit anderen Daten (Kassakurse statt Futures, kürzere Historie), deshalb sind kleine Abweichungen normal.`;
+  saisonChart();
+}
+
+function saisonChart() {
+  const S = DATA.saison; if (!S) return;
+  const D = S.maerkte[sM][sN]; const text = css("--text"), leise = css("--leise"), linie = css("--linie");
+  const hoch = `rgb(${css("--hoch")})`, tief = `rgb(${css("--tief")})`;
+  const basis = {margin: {l: 52, r: 12, t: 10, b: 40}, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: {color: text, size: 12},
+                 dragmode: false, showlegend: false, yaxis: {gridcolor: linie, zerolinecolor: leise, ticksuffix: " %"}};
+  let spuren, layout;
+  if (sAnsicht === "kurve") {
+    const x = Array.from({length: 365}, (_, i) => new Date(Date.UTC(2001, 0, 1 + i)).toISOString().slice(0, 10));
+    const [, mm, dd] = S.ref.split("-");
+    const x0 = `2001-${mm}-${dd}`, x1 = new Date(Date.UTC(2001, +mm - 1, +dd + 28)).toISOString().slice(0, 10);
+    spuren = [{x, y: D.kurve, type: "scatter", mode: "lines", line: {color: hoch, width: 2}, hovertemplate: "%{x|%d. %b}: %{y:+.2f} %<extra></extra>"}];
+    layout = {...basis, xaxis: {gridcolor: linie, tickformat: "%b", dtick: "M1", range: ["2001-01-01", "2001-12-31"]},
+      shapes: [{type: "rect", xref: "x", yref: "paper", x0, x1: x1 > "2001-12-31" ? "2001-12-31" : x1, y0: 0, y1: 1, fillcolor: leise, opacity: 0.18, line: {width: 0}}],
+      annotations: [{x: x0, y: 1, yref: "paper", text: "heute + 4 Wochen", showarrow: false, xanchor: "left", yanchor: "top", font: {color: leise, size: 11}}]};
+  } else {
+    const liste = sAnsicht === "monate" ? D.monate : D.wochen;
+    const x = sAnsicht === "monate" ? MON : liste.map(e => e.woche);
+    spuren = [{x, y: liste.map(e => e.mean), type: "bar", marker: {color: liste.map(e => (e.mean >= 0 ? hoch : tief)), line: {color: liste.map(e => auffaellig(e.plus, e.n) ? text : "rgba(0,0,0,0)"), width: 2}},
+      customdata: liste.map(e => [e.median, e.plus, e.n]),
+      hovertemplate: (sAnsicht === "monate" ? "%{x}" : "Woche %{x}") + ": Ø %{y:+.2f} %<br>Median %{customdata[0]:+.2f} %<br>%{customdata[1]} von %{customdata[2]} Jahren Plus<extra></extra>"}];
+    layout = {...basis, xaxis: {gridcolor: linie, type: "category", title: {text: sAnsicht === "wochen" ? "Kalenderwoche (Rahmen = außerhalb der Zufallsgrenze)" : "Rahmen = außerhalb der Zufallsgrenze"}}};
+  }
+  Plotly.react("schart", spuren, layout, {responsive: true, displaylogo: false, displayModeBar: false});
+}
+
 function aufbau() {
   document.getElementById("marktwahl").innerHTML = DATA.maerkte.map(m => `<button data-markt="${m}">${m}</button>`).join("");
   document.getElementById("gruppen").innerHTML = ALLE.map(g => `<dt>${DATA.gruppen[g].name}</dt><dd>${DATA.gruppen[g].text}</dd>`).join("");
@@ -248,9 +333,12 @@ function aufbau() {
     if (b.dataset.fenster) { fenster = +b.dataset.fenster; tabelle(); }
     if (b.dataset.markt) { markt = b.dataset.markt; markte(); chart(); }
     if (b.dataset.bericht) { bericht = b.dataset.bericht; berichte(); chart(); }
+    if (b.dataset.sjahre) { sN = b.dataset.sjahre; saison(); }
+    if (b.dataset.smarkt) { sM = b.dataset.smarkt; saison(); }
+    if (b.dataset.sansicht) { sAnsicht = b.dataset.sansicht; saison(); }
   });
-  markte(); berichte(); status(); tabelle(); chart(); pruefung();
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(chart, 50));
+  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(() => { chart(); saisonChart(); }, 50));
 }
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }
 function berichte() { document.querySelectorAll("[data-bericht]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.bericht === bericht))); }

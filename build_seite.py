@@ -16,6 +16,8 @@ import pandas as pd
 import check_quellen
 import config
 import kennzahlen as kz
+import kurse as kurse_modul
+import saisonalitaet
 
 HIER = Path(__file__).parent
 DOCS = HIER / "docs"
@@ -91,7 +93,13 @@ def baue(quellen=None):
     jetzt = datetime.now(timezone.utc)
     pfad_pruefung = HIER / "daten" / "pruefung_cot.json"
     pruefung = json.loads(pfad_pruefung.read_text(encoding="utf-8")) if pfad_pruefung.exists() else None
+    try:
+        saison = saisonalitaet.berechne(kurse_modul.lade(), pd.Timestamp(datetime.now().date()))
+    except Exception as e:
+        print(f"::warning::Saisonalität konnte nicht berechnet werden: {e}")
+        saison = None
     daten = {
+        "saison": saison,
         "pruefung": pruefung,
         "gebaut_iso": jetzt.strftime("%Y-%m-%dT%H:%M:%SZ"), "quellen": quellen,
         "stand": stand.strftime("%Y-%m-%d"), "alter": int(alter), "ampel": ampel(alter),
