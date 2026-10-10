@@ -14,6 +14,7 @@ MAERKTE = {
 }
 
 CFTC_URL = "https://publicreporting.cftc.gov/resource/"
+COT_START = "2000-01-01"  # ab hier wöchentliche Berichte
 CFTC_DATASETS = {"legacy": "6dca-aqww", "tff": "gpe5-46if"}
 
 # Frische-Ampel für die Prüfung: (grün bis, gelb bis) in Tagen, danach rot
