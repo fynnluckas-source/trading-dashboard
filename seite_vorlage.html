@@ -88,14 +88,19 @@
     <button data-fenster="52">52 Wochen</button>
     <button data-fenster="156">156 Wochen (3 Jahre)</button>
   </div>
+  <div class="reihe" role="group" aria-label="Weitere Gruppen">
+    <span class="leise">Gruppen:</span>
+    <button id="tffknopf" onclick="toggleTff()" aria-pressed="false">Mehr Details (TFF) anzeigen</button>
+  </div>
   <div class="karte scroll"><table id="tabelle"></table></div>
+  <div class="karte" id="cotLese" style="margin-top:10px"></div>
   <div class="legende">
     <span><span class="farbe" style="background:rgb(var(--hoch))"></span>Index hoch (Rahmen ab 80)</span>
     <span><span class="farbe" style="background:rgb(var(--tief))"></span>Index tief (Rahmen bis 20)</span>
     <span>Die Farben bedeuten nur „hoch“ und „tief“, noch nicht „bullisch“ oder „bärisch“. Das klärt erst die Prüfung in Etappe 1d.</span>
   </div>
 
-  <h2>Verlauf je Markt</h2>
+  <h2>Verlauf je Währung</h2>
   <div class="reihe" id="marktwahl" role="group" aria-label="Markt"></div>
   <div class="reihe" role="group" aria-label="Bericht">
     <span class="leise">Gruppen:</span>
@@ -126,7 +131,14 @@
   <div id="verlauf"></div>
 
   <h2>Was sind die Gruppen?</h2>
-  <div class="karte"><dl id="gruppen"></dl></div>
+  <div class="karte">
+    <p style="margin-top:0">Die CFTC veröffentlicht <b>zwei Berichte</b> über dieselben Marktteilnehmer, nach zwei verschiedenen Rastern sortiert. <b>Leveraged Funds und Asset Manager sind keine neue Gruppe</b>, sondern eine feinere Sicht auf Leute, die im alten Bericht überwiegend bei den Großspekulanten stehen.</p>
+    <div class="scroll"><table style="min-width:520px"><thead><tr><th style="text-align:left">Alter Bericht (Legacy), nach Zweck</th><th style="text-align:left">Neuer Bericht (TFF), nach Typ</th></tr></thead><tbody>
+      <tr><td style="text-align:left"><b>Commercials</b> (sichern echte Geschäfte ab)</td><td style="text-align:left">Dealer (vor allem Banken), überwiegend</td></tr>
+      <tr><td style="text-align:left"><b>Großspekulanten</b> (Large Traders)</td><td style="text-align:left">Asset Manager und Leveraged Funds, überwiegend, dazu weitere</td></tr>
+      <tr><td style="text-align:left"><b>Kleinanleger</b> (Small Traders)</td><td style="text-align:left">Kleinanleger (dieselben)</td></tr></tbody></table></div>
+    <p class="leise kurz">Die Zuordnung ist nicht exakt: Legacy sortiert danach, ob jemand bei der CFTC eine Absicherungsausnahme hat, TFF nach der Art des Unternehmens. Ein Vermögensverwalter kann deshalb in Legacy bei den Commercials und in TFF bei den Asset Managern stehen. Wenn du bisher auf Commercials und Großspekulanten geschaut hast, hast du das Wesentliche im Blick. TFF ist ein Zusatzdetail.</p>
+    <dl id="gruppen" style="margin-bottom:0"></dl></div>
 </main>
 
 <script>
@@ -135,7 +147,9 @@ const DATA = __DATEN__;
 const GRUPPENFARBE = {spec:"#e5484d", comm:"#3b82f6", small:"#22a06b", lev:"#f59e0b", am:"#a855f7"};
 const BERICHT = {legacy:["spec","comm","small"], tff:["lev","am"]};
 const ALLE = ["spec","comm","small","lev","am"];
-let fenster = 52, bericht = "legacy", markt = DATA.maerkte[0];
+let fenster = 52, bericht = "legacy", markt = DATA.maerkte[0], zeigeTff = false;
+const SICHTBAR = () => zeigeTff ? ALLE : ALLE.slice(0, 3);
+function toggleTff() { zeigeTff = !zeigeTff; tabelle(); }
 
 function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 // Info-Feld beim Darüberfahren mit der Maus: dunkler Hintergrund und helle Schrift im Dunkel-Design, umgekehrt im Hell-Design (immer gut lesbar)
@@ -162,11 +176,11 @@ function status() {
 }
 
 function tabelle() {
-  let kopf = `<tr><th class="markt">Markt</th>` + ALLE.map(g =>
+  let kopf = `<tr><th class="markt">Währung</th>` + SICHTBAR().map(g =>
     `<th>${DATA.gruppen[g].name}<small>${DATA.gruppen[g].bericht.toUpperCase()}</small></th>`).join("") + `</tr>`;
   const zeilen = DATA.maerkte.map(m => {
     const L = DATA.latest[m];
-    const zellen = ALLE.map(g => {
+    const zellen = SICHTBAR().map(g => {
       const d = L.gruppen[g];
       const idx = d["idx" + fenster];
       let stil = "", klasse = "zelle";
@@ -183,6 +197,18 @@ function tabelle() {
     return `<tr><td class="markt"><b>${m}</b><span class="leise">${L.name}</span></td>${zellen}</tr>`;
   }).join("");
   document.getElementById("tabelle").innerHTML = `<thead>${kopf}</thead><tbody>${zeilen}</tbody>`;
+  const kn = document.getElementById("tffknopf");
+  kn.textContent = zeigeTff ? "Mehr Details (TFF) ausblenden" : "Mehr Details (TFF) anzeigen";
+  kn.setAttribute("aria-pressed", String(zeigeTff));
+  const eur = DATA.latest["6E"], sp = eur && eur.gruppen.spec, co = eur && eur.gruppen.comm;
+  const beispiel = sp && co && sp["idx" + fenster] !== null && co["idx" + fenster] !== null
+    ? `<p><b>Beispiel aus den aktuellen Zahlen (EUR, ${fenster} Wochen):</b> Großspekulanten stehen bei Index ${Math.round(sp["idx" + fenster])} (netto ${vz(sp.net)} Kontrakte), Commercials bei Index ${Math.round(co["idx" + fenster])} (netto ${vz(co.net)} Kontrakte). Großspekulanten und Commercials stehen fast immer auf entgegengesetzten Seiten, deshalb zeigen beide Spalten meist dasselbe Bild mit vertauschten Farben.</p>` : "";
+  document.getElementById("cotLese").innerHTML = `<b>So liest du die Tabelle</b>
+    <p>Jede Zeile ist eine <b>Währung</b>, jede Spalte eine <b>Gruppe von Marktteilnehmern</b>. Die ersten drei Spalten (Legacy) sind genau die drei Linien deines TradingView-Indikators: Großspekulanten (Large Traders, rot), Commercials (blau), Kleinanleger (Small Traders, grün).</p>
+    <p>In jeder Zelle stehen drei Zahlen: Die <b>große Zahl</b> (0 bis 100) zeigt, wo die Gruppe im gewählten Zeitraum steht: 0 = so short wie sonst nie, 100 = so long wie sonst nie. Darunter die <b>Netto-Position</b> (Long minus Short, ein Minus heißt: unterm Strich short) und die <b>Veränderung zur Vorwoche</b> (Δ).</p>
+    ${beispiel}
+    <p>Blau (ab 80) und orange (bis 20) sind nur Markierungen für „extrem hoch“ und „extrem tief“. <b>Sie sind kein Kauf- oder Verkaufssignal</b>: Die Prüfung weiter unten zeigt, dass ein solcher Extremwert in den alten Daten nichts über die Kursrichtung der nächsten Wochen verraten hat.</p>
+    <p class="leise" style="margin-bottom:0">Leveraged Funds und Asset Manager (Knopf „Mehr Details“) sind keine neuen Marktteilnehmer, sondern dieselben Leute, nach einem anderen Raster sortiert. Siehe „Was sind die Gruppen?“ ganz unten.</p>`;
   document.querySelectorAll("[data-fenster]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.fenster === fenster)));
 }
 
@@ -252,18 +278,25 @@ function pruefung() {
     const zellen = [1,4,13].map(hh => {
       const e = P.ergebnisse.find(r => r.gruppe === g && r.h === hh);
       return `<td class="pz ${e.bestanden ? "ja" : ""}" title="Training: D ${fm(e.d_training)}, p ${fp(e.p_training)}. Test: Mittel nach hoch ${fm(e.mittel_hoch_test)}, nach tief ${fm(e.mittel_tief_test)}, alle Wochen ${fm(e.mittel_alle_test)}. Signale im Test: ${e.n_hoch_test} hoch, ${e.n_tief_test} tief in ${e.phasen_test} Phasen.">` +
-        `<b>${e.bestanden ? "bestanden" : "nicht bestanden"}</b><small class="kurz">Training: ${e.richtung}<br>Test D ${fm(e.d_test)}, p ${fp(e.p_test)}<br>${e.maerkte_einig} von ${e.maerkte_gueltig} Märkten einig</small></td>`;
+        `<b>${e.bestanden ? "bestanden" : "nicht bestanden"}</b><small class="kurz">Training: ${e.richtung}<br>Test D ${fm(e.d_test)}, p ${fp(e.p_test)}<br>in ${e.maerkte_einig} von ${e.maerkte_gueltig} Währungen gleiche Richtung</small></td>`;
     }).join("");
-    return `<tr><td class="markt"><b>${DATA.gruppen[g].name}</b></td>${zellen}</tr>`;
+    return `<tr><td class="markt"><b>${DATA.gruppen[g].name}</b><span class="leise">${DATA.gruppen[g].bericht === "legacy" ? "Legacy (deine TradingView-Linien)" : "TFF (Zusatzdetail)"}</span></td>${zellen}</tr>`;
   }).join("");
   el.innerHTML = `<h2>Prüfung COT (Etappe 1d)</h2>` +
+    `<div class="karte" style="margin-bottom:10px"><b>So liest du diese Prüfung</b>
+      <p>Die Frage: Wenn eine Gruppe an einem Extremwert stand (Index ab 80 oder bis 20), ist der Kurs danach in den nächsten 1, 4 oder 13 Wochen in einer erkennbaren Richtung gelaufen? Das wurde seit 2007 für jede der 8 Währungen getestet. „Nicht bestanden“ heißt: nein, nicht verlässlich.</p>
+      <ul style="margin:6px 0;padding-left:20px"><li><b>Training: Mitläufer oder Kontra:</b> Auf den ersten 70 % der Zeit wurde geschaut, was besser passte. Mitläufer = nach „hoch“ stieg der Kurs eher, Kontra = er fiel eher.</li>
+      <li><b>Test D:</b> Dann wurde diese Regel auf den letzten 30 % der Zeit geprüft. D ist der Unterschied der Kursbewegung nach „hoch“ gegenüber nach „tief“. Bei einer echten Regel müsste D deutlich von 0 abweichen. Liegt D nahe 0, gibt es keinen erkennbaren Unterschied.</li>
+      <li><b>p:</b> Wie wahrscheinlich reiner Zufall ist. Es braucht p unter 0,05 (5 %). Je höher p, desto plausibler ist reiner Zufall (0,50 heißt: eine Münze hätte es genauso gut gekonnt).</li>
+      <li><b>„in X von 8 Währungen gleiche Richtung“:</b> In wie vielen der 8 Währungen zeigte das Ergebnis in dieselbe Richtung wie im Gesamtergebnis. Es braucht mindestens 5.</li></ul>
+      <p class="leise" style="margin-bottom:0">Bestanden gilt nur, wenn alles erfüllt ist. Du musst dich deshalb nicht zwischen Gruppen entscheiden: Keine Gruppe hat die Prüfung bestanden, auch nicht die Commercials. Tabelle und Prüfung lassen sich nicht zu einem Signal kombinieren. Die Tabelle zeigt den heutigen Zustand, die Prüfung sagt, dass dieser Zustand bisher keine Prognosekraft hatte.</p></div>` +
     `<div class="karte"><p style="margin-top:0"><b>Ergebnis: ${P.anzahl_bestanden === 0 ? "Keine Gruppe hat die Prüfung bestanden." : P.anzahl_bestanden + " von " + P.anzahl_tests + " Tests bestanden."}</b> ` +
     `Durch reinen Zufall wären etwa ${String(P.erwartet_zufall).replace(".", ",")} bestandene Tests zu erwarten gewesen. ` +
-    `${P.anzahl_bestanden === 0 ? "Ein extremer COT-Index hat bei diesen 8 Märkten keine verlässliche Vorhersagekraft für die nächsten 1, 4 oder 13 Wochen gezeigt. Der COT bleibt deshalb eine Information ohne Punkte im Punktesystem." : "Bei bestandenen Tests bitte die Einzelwerte prüfen, bevor sie Punkte bekommen."}</p>` +
+    `${P.anzahl_bestanden === 0 ? "Ein extremer COT-Index hat bei diesen 8 Währungen keine verlässliche Vorhersagekraft für die nächsten 1, 4 oder 13 Wochen gezeigt. Der COT bleibt deshalb eine Information ohne Punkte im Punktesystem." : "Bei bestandenen Tests bitte die Einzelwerte prüfen, bevor sie Punkte bekommen."}</p>` +
     `<div class="scroll"><table style="min-width:520px"><thead><tr><th class="markt">Gruppe</th><th>1 Woche</th><th>4 Wochen</th><th>13 Wochen</th></tr></thead><tbody>${zeilen}</tbody></table></div>` +
     `<p class="leise kurz" style="margin-bottom:0"><b>So wurde geprüft:</b> Signal = COT-Index über ${P.fenster} Wochen ab ${P.schwelle_hoch} („hoch“) bzw. bis ${P.schwelle_tief} („tief“). Gemessen wird die Kursänderung nach dem Signal in Schwankungs-Einheiten, Einstieg erst am Handelstag nach der Veröffentlichung. ` +
     `D = Mittel nach „hoch“ minus Mittel nach „tief“ (D über 0: Mitläufer, unter 0: Kontra). Die Richtung wird nur auf den ersten 70 % (${P.zeitraum_von} bis ${P.split}) festgelegt und auf den letzten 30 % (bis ${P.zeitraum_bis}) geprüft. ` +
-    `Bestanden nur, wenn dort D dieselbe Richtung hat, der Zufallstest (${P.n_perm} Verschiebungen) p unter 0,05 ergibt und mindestens 5 von 8 Märkten dieselbe Richtung zeigen. ` +
+    `Bestanden nur, wenn dort D dieselbe Richtung hat, der Zufallstest (${P.n_perm} Verschiebungen) p unter 0,05 ergibt und mindestens 5 von 8 Währungen dieselbe Richtung zeigen. ` +
     `Ein Effekt hätte etwa 0,25 (4 Wochen) bzw. 0,4 (13 Wochen) groß sein müssen, um aufzufallen. Kleinere Effekte können nicht ausgeschlossen werden. Stand der Rechnung: ${P.berechnet}, Kurse: FRED-Kassakurse und Yahoo-Index (DX).</p></div>`;
 }
 
@@ -303,9 +336,9 @@ function saison() {
     return `<tr><td class="markt"><b>${m}</b><span class="leise">${DATA.latest[m].name}</span></td>` +
       `<td class="${klasse}"><b class="grosszahl">${pz(a.mean)}</b></td><td class="sz">${pz(a.median)}</td><td class="${klasse}"><b>${a.plus} von ${a.n}</b></td><td class="sz leise">${pz(a.basis_mean)}</td><td class="sz leise">${a.basis_hit.toFixed(0)} %</td></tr>`;
   }).join("");
-  document.getElementById("sUebersicht").innerHTML = `<thead><tr><th class="markt">Markt</th><th>Ø nächste 4 Wochen<small>Einstieg ab ${ab}</small></th><th>Median</th><th>Jahre mit Plus</th><th>Zum Vergleich: Ø jedes 4-Wochen-Fenster</th><th>Anteil Plus normal</th></tr></thead><tbody>${zeilen}</tbody>`;
+  document.getElementById("sUebersicht").innerHTML = `<thead><tr><th class="markt">Währung</th><th>Ø nächste 4 Wochen<small>Einstieg ab ${ab}</small></th><th>Median</th><th>Jahre mit Plus</th><th>Zum Vergleich: Ø jedes 4-Wochen-Fenster</th><th>Anteil Plus normal</th></tr></thead><tbody>${zeilen}</tbody>`;
   document.getElementById("sZufall").textContent = (g ? `Zufallsgrenze bei ${sN} Jahren: erst ${g} oder mehr Jahre mit Plus (oder ${sN - g} oder weniger) sind nicht mehr mit einer Münze erklärbar, diese Felder haben einen Rahmen. ` : `Bei ${sN} Jahren ist selbst 5 von 5 noch mit Zufall erklärbar, deshalb gibt es hier keine Rahmen. `) +
-    `Wer 8 Märkte, 12 Monate und 52 Wochen ansieht, findet immer einige auffällige Felder, und die 8 Märkte hängen zusammen (alle gegen den Dollar). Ob die Saisonalität wirklich trägt, prüft erst Etappe 2c.`;
+    `Wer 8 Währungen, 12 Monate und 52 Wochen ansieht, findet immer einige auffällige Felder, und die 8 Währungen hängen zusammen (alle gegen den Dollar). Ob die Saisonalität wirklich trägt, prüft erst Etappe 2c.`;
   document.getElementById("sTitel").textContent = `${sM} (${DATA.latest[sM].name}), ${sN} Jahre (${S.bis_jahr - sN + 1} bis ${S.bis_jahr})`;
   const au = auffaellig(A.plus, A.n);
   document.getElementById("sAusblick").innerHTML = `<b>Nächste 4 Wochen (${ab} bis ${new Date(new Date(S.ref).getTime() + A.tage * 864e5).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})}):</b> ` +
@@ -377,7 +410,7 @@ function zeitraum() {
     const [, mm, dd] = S.ref.split("-");
     ZR.start = [+mm, +dd]; ZR.ende = zrPlusTage(ZR.start, 28); ZR.markt = DATA.maerkte[0];
     el.innerHTML = `<h2>Zeitraum-Rechner (wie bei Seasonax)</h2>
-      <div class="leise">Wähle einen Zeitraum im Jahr. Du siehst für alle 8 Märkte, wie dieser Zeitraum in den letzten Jahren gelaufen ist: Winrate (Anteil der Jahre mit Plus), Durchschnitt, Sharpe Ratio und eine Ampel nach deiner Regel.</div>
+      <div class="leise">Wähle einen Zeitraum im Jahr. Du siehst für alle 8 Währungen, wie dieser Zeitraum in den letzten Jahren gelaufen ist: Winrate (Anteil der Jahre mit Plus), Durchschnitt, Sharpe Ratio und eine Ampel nach deiner Regel.</div>
       <div class="karte" style="margin-top:10px">
         <div class="reihe" style="margin-top:0"><b>Start</b> <select id="zrSd" aria-label="Starttag"></select> <select id="zrSm" aria-label="Startmonat"></select>
           <b style="margin-left:12px">Ende</b> <select id="zrEd" aria-label="Endtag"></select> <select id="zrEm" aria-label="Endmonat"></select></div>
@@ -438,7 +471,7 @@ function zeitraum() {
       ampelZelle(m) + `</tr>`;
   }).join("");
   document.getElementById("zrTabelle").innerHTML =
-    `<thead><tr><th class="markt">Markt</th><th>Winrate</th><th>Ø Rendite</th><th>Median</th><th>Streuung</th><th>Jahresrendite<small>hochgerechnet</small></th><th>Schwankung<small>pro Jahr</small></th><th>Sharpe</th><th>Ampel</th></tr></thead><tbody>${zeilen}</tbody>`;
+    `<thead><tr><th class="markt">Währung</th><th>Winrate</th><th>Ø Rendite</th><th>Median</th><th>Streuung</th><th>Jahresrendite<small>hochgerechnet</small></th><th>Schwankung<small>pro Jahr</small></th><th>Sharpe</th><th>Ampel</th></tr></thead><tbody>${zeilen}</tbody>`;
   el.querySelectorAll("[data-zrmarkt]").forEach(tr => tr.addEventListener("click", () => { ZR.markt = tr.dataset.zrmarkt; zeitraum(); }));
 
   const r0 = erg[DATA.maerkte[0]];
@@ -466,13 +499,13 @@ function pruefungSaison() {
   if (!P) return;
   const fm = (x, d = 2) => x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
   const quellen = {kassa: "Kassa", future: "Future", stabil: "stabil (beide)"};
-  const auswahl = {A: "alle Fenster", B: "bestes Fenster je Markt und Jahr"};
+  const auswahl = {A: "alle Fenster", B: "bestes Fenster je Währung und Jahr"};
   const zeilen = [];
   ["kassa", "future", "stabil"].forEach(q => ["A", "B"].forEach(a => {
     const zellen = [7, 14, 21, 28].map(L => {
       const e = P.ergebnisse.find(x => x.quelle === q && x.auswahl === a && x.laenge === L);
       if (!e || !e.n_trades) return `<td class="sz">–</td>`;
-      return `<td class="sz pz${e.bestanden ? " ja" : ""}" title="${e.n_trades} Trades in ${e.n_phasen} Phasen. Long ${e.n_long}: Ø ${fm(e.mean_long, 3)} %, Short ${e.n_short}: Ø ${fm(e.mean_short, 3)} %. Testjahre im Plus: ${e.jahre_positiv} von ${e.jahre_gesamt}, Märkte im Plus: ${e.maerkte_positiv} von ${e.maerkte_gesamt}. Nach Kosten: Ø ${fm(e.mean_nach_kosten, 3)} %.">` +
+      return `<td class="sz pz${e.bestanden ? " ja" : ""}" title="${e.n_trades} Trades in ${e.n_phasen} Phasen. Long ${e.n_long}: Ø ${fm(e.mean_long, 3)} %, Short ${e.n_short}: Ø ${fm(e.mean_short, 3)} %. Testjahre im Plus: ${e.jahre_positiv} von ${e.jahre_gesamt}, Währungen im Plus: ${e.maerkte_positiv} von ${e.maerkte_gesamt}. Nach Kosten: Ø ${fm(e.mean_nach_kosten, 3)} %.">` +
         `<b>${fm(e.mean, 3)} %</b><small class="leise" style="display:block">${e.trefferquote.toFixed(0)} % Treffer, p ${e.p.toFixed(2).replace(".", ",")}</small><small class="leise" style="display:block">${e.n_trades} Trades</small></td>`;
     }).join("");
     zeilen.push(`<tr><td class="markt"><b>${quellen[q]}</b><span class="leise">${auswahl[a]}</span></td>${zellen}</tr>`);
@@ -484,8 +517,8 @@ function pruefungSaison() {
       Hauptfall (Kassa, alle Fenster, 4 Wochen): Ø ${fm(haupt.mean, 3)} % je Trade, ${haupt.trefferquote.toFixed(0)} % Treffer, ${haupt.n_trades} Trades, Zufallstest p ${haupt.p.toFixed(2).replace(".", ",")}.
       Die Zahlen zeigen: Ø Rendite je Trade vor Kosten, Trefferquote und Zufalls-p. ${P.anzahl_bestanden === 0 ? "Die Saisonalität bekommt deshalb im Punktesystem 0 Punkte und bleibt eine Information (Zeitraum-Rechner, Saisonkurven)." : ""}</p>
       <div class="scroll"><table style="min-width:640px"><thead><tr><th class="markt">Quelle / Auswahl</th><th>1 Woche</th><th>2 Wochen</th><th>3 Wochen</th><th>4 Wochen</th></tr></thead><tbody>${zeilen.join("")}</tbody></table></div>
-      <p class="leise kurz" style="margin-bottom:0"><b>So wurde geprüft:</b> Für jedes Testjahr und jeden Startpunkt (jede Woche des Jahres) zählt nur, was in den ${P.n_jahre} Jahren davor galt: Winrate und Sharpe wie im Zeitraum-Rechner. Erfüllt ein Fenster deine Regel, wird es im Testjahr zu denselben Kalendertagen gehandelt (Long +Rendite, Short −Rendite). „Bestes Fenster“ = pro Markt und Jahr nur das Fenster mit dem größten Sharpe-Betrag, so wie du es von Hand wählen würdest.
-        Zufallstest: Die Kandidaten-Fenster werden ${P.n_perm}-mal zufällig im Jahr verschoben (alle Märkte gleich weit). Bestanden nur, wenn die Durchschnittsrendite über 0 liegt und p unter 0,05, in mindestens 60 % der Testjahre und in mindestens 5 Märkten im Plus, bei über 50 % Treffern. Kosten (0,03 % je Trade) stehen im Mouseover. Schwellen wurden nicht angepasst.
+      <p class="leise kurz" style="margin-bottom:0"><b>So wurde geprüft:</b> Für jedes Testjahr und jeden Startpunkt (jede Woche des Jahres) zählt nur, was in den ${P.n_jahre} Jahren davor galt: Winrate und Sharpe wie im Zeitraum-Rechner. Erfüllt ein Fenster deine Regel, wird es im Testjahr zu denselben Kalendertagen gehandelt (Long +Rendite, Short −Rendite). „Bestes Fenster“ = pro Währung und Jahr nur das Fenster mit dem größten Sharpe-Betrag, so wie du es von Hand wählen würdest.
+        Zufallstest: Die Kandidaten-Fenster werden ${P.n_perm}-mal zufällig im Jahr verschoben (alle Währungen gleich weit). Bestanden nur, wenn die Durchschnittsrendite über 0 liegt und p unter 0,05, in mindestens 60 % der Testjahre und in mindestens 5 Währungen im Plus, bei über 50 % Treffern. Kosten (0,03 % je Trade) stehen im Mouseover. Schwellen wurden nicht angepasst.
         Mit anderen Sharpe-Schwellen (Kassa, 4 Wochen, alle Fenster, nur zur Ansicht): ${P.empfindlichkeit.map(x => "ab " + x.schwelle.toFixed(1).replace(".", ",") + ": " + fm(x.mean, 3) + " % (" + x.n_trades + " Trades)").join("; ")}. Eine bessere Schwelle ist nicht erkennbar.
         Stand der Rechnung: ${P.berechnet}.</p></div>`;
 }
@@ -496,7 +529,7 @@ function vorwaertstest() {
   const fm = (x, d = 3) => x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
   const richtung = s => s === 1 ? "Long" : s === -1 ? "Short" : s === 0 ? "–" : "";
   const quellen = {kassa: "Kassa", future: "Future", stabil: "stabil (beide)"};
-  const auswahl = {A: "alle Fenster", B: "bestes Fenster je Markt und Jahr"};
+  const auswahl = {A: "alle Fenster", B: "bestes Fenster je Währung und Jahr"};
   const zeilen = [];
   ["kassa", "future", "stabil"].forEach(q => ["A", "B"].forEach(a => {
     const zellen = [7, 14, 21, 28].map(L => {
@@ -522,7 +555,7 @@ function vorwaertstest() {
       <div class="scroll"><table style="min-width:640px"><thead><tr><th class="markt">Quelle / Auswahl</th><th>1 Woche</th><th>2 Wochen</th><th>3 Wochen</th><th>4 Wochen</th></tr></thead><tbody>${zeilen.join("")}</tbody></table></div>
       <p class="leise kurz">Zahlen: Ø Rendite je Trade vor Kosten, Trefferquote, Anzahl ausgewerteter Trades. Bei so wenigen Trades sagen sie noch nichts aus.</p></div>
     <h3 style="font-size:15px;margin:18px 0 6px">Vorschau: Signale für Fenster, die noch nicht begonnen haben</h3>
-    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Markt</th><th>Fenster</th><th>Kassa</th><th>Future</th><th>stabil</th><th>Winrate</th><th>Sharpe</th></tr></thead><tbody>${vorschau || '<tr><td colspan="7" class="leise">Keine Signale.</td></tr>'}</tbody></table></div>
+    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Währung</th><th>Fenster</th><th>Kassa</th><th>Future</th><th>stabil</th><th>Winrate</th><th>Sharpe</th></tr></thead><tbody>${vorschau || '<tr><td colspan="7" class="leise">Keine Signale.</td></tr>'}</tbody></table></div>
     <div class="leise kurz" style="margin-top:6px">Nur zur Beobachtung: Im Rückwärtstest hat diese Regel keinen Vorteil gezeigt (siehe „Prüfung Saisonalität“). Gezeigt werden die ersten 40 Einträge.</div>`;
 }
 
@@ -567,7 +600,7 @@ function zinsen() {
       `<td class="sz"><span class="punkt ${farbe[k.ampel]}"></span>${dat(k.datenstand_land)}</td></tr>`;
   }).join("");
   document.getElementById("zTabelle").innerHTML =
-    `<thead><tr><th class="markt">Markt</th><th>Leitzins</th><th>US-Leitzins</th><th>Zinsabstand<small>in Prozentpunkten</small></th><th>Δ 3 Monate</th><th>Δ 6 Monate</th><th>Δ 12 Monate</th><th>Letzte Änderung</th><th>Letzte 12 Monate</th><th>Datenstand</th></tr></thead><tbody>${zeilen}</tbody>`;
+    `<thead><tr><th class="markt">Währung</th><th>Leitzins</th><th>US-Leitzins</th><th>Zinsabstand<small>in Prozentpunkten</small></th><th>Δ 3 Monate</th><th>Δ 6 Monate</th><th>Δ 12 Monate</th><th>Letzte Änderung</th><th>Letzte 12 Monate</th><th>Datenstand</th></tr></thead><tbody>${zeilen}</tbody>`;
   document.getElementById("zNotiz").textContent =
     `Δ = Veränderung des Zinsabstands (Prozentpunkte). Der Datenstand ist der letzte Tag, den die BIS für dieses Land gemeldet hat. Ein Leitzins gilt bis zur nächsten Meldung weiter. Wenn die BIS ein Land verspätet liefert (z. B. Australien um etwa 2 Wochen), können neuere Zinsentscheidungen noch fehlen. ` +
     `US-Rendite für 2 Jahre (Marktzins, Erwartung): ${pz(Z.us2y.wert)} am ${dat(Z.us2y.datum)}. Noch keine Bewertung: ob Zinsabstand oder Zinsrichtung etwas über die nächsten Wochen sagen, prüft Etappe 3c.`;
@@ -625,7 +658,7 @@ function makroAnzeige() {
       `<td class="sz leise" style="font-size:12px">${k.inflation_quelle}<br>${k.arbeitslos_quelle}</td></tr>`;
   }).join("");
   document.getElementById("mTabelle").innerHTML =
-    `<thead><tr><th class="markt">Markt</th><th>Inflation<small>zum Vorjahr, Stand</small></th><th>Ziel<small>Notenbank</small></th><th>Abstand zum Ziel</th><th>Δ 3 Monate<small>der Inflation</small></th><th>Arbeitslosenquote<small>Stand</small></th><th>Δ 6 Monate<small>Prozentpunkte</small></th><th>Realzins<small>Leitzins minus Inflation</small></th><th>Quellen<small>Inflation / Arbeit</small></th></tr></thead><tbody>${zeilen}</tbody>`;
+    `<thead><tr><th class="markt">Währung</th><th>Inflation<small>zum Vorjahr, Stand</small></th><th>Ziel<small>Notenbank</small></th><th>Abstand zum Ziel</th><th>Δ 3 Monate<small>der Inflation</small></th><th>Arbeitslosenquote<small>Stand</small></th><th>Δ 6 Monate<small>Prozentpunkte</small></th><th>Realzins<small>Leitzins minus Inflation</small></th><th>Quellen<small>Inflation / Arbeit</small></th></tr></thead><tbody>${zeilen}</tbody>`;
   document.getElementById("mNotiz").textContent =
     `Ziel = Mitte des Inflationsziels (Schweiz 0 bis 2 % gilt als 1 %, Australien 2 bis 3 % als 2,5 %). Neuseeland, Schweiz (Arbeitslosigkeit) und die OECD-Reihen sind teils quartalsweise. Arbeitslosenquoten werden nachträglich korrigiert, die Seite zeigt den jeweils aktuellen Stand der Quelle. Die Veröffentlichungstermine sind nur grob bekannt (übliche Verzögerung je Reihe). Noch keine Bewertung: Ob Inflation, Realzins oder Arbeitsmarkt etwas über die nächsten Wochen sagen, prüft Etappe 3c.`;
   document.getElementById("mWahl").innerHTML = DATA.maerkte.map(m => `<button data-mmarkt="${m}" aria-pressed="${m === mM}">${m}</button>`).join("");
@@ -709,8 +742,8 @@ function gesamtbewertung() {
       Ein Faktor bekommt nur Punkte, wenn er den Rückwärtstest <b>und</b> den Vorwärtstest bestanden hat. ${G.bestaetigt === 0 ? "Das hat bisher keiner geschafft. Deshalb zeigt die Tabelle die aktuelle Lesung jedes Faktors als Information, vergibt aber überall 0 Punkte. Das Dashboard sagt also bewusst nicht „bullisch“ oder „bärisch“, solange es dafür keinen geprüften Grund gibt." : ""}</p></div>
     <h3 style="font-size:15px;margin:16px 0 6px">Faktoren und ihr Status</h3>
     <div class="karte scroll"><table style="min-width:680px"><thead><tr><th class="markt">Faktor</th><th style="text-align:left">Prüfergebnis</th><th>Status</th><th style="text-align:left">Punkte</th></tr></thead><tbody>${fz}</tbody></table></div>
-    <h3 style="font-size:15px;margin:16px 0 6px">Märkte: aktuelle Lesung und Punkte</h3>
-    <div class="karte scroll"><table style="min-width:980px"><thead><tr><th class="markt">Markt</th>${kopf}<th>Gesamt</th><th>Einstufung</th><th>Beobachtung Realzins<small>Signal vom ${G.stand_signal ? G.stand_signal.split("-").reverse().join(".") : "–"}</small></th></tr></thead><tbody>${mz}</tbody></table></div>
+    <h3 style="font-size:15px;margin:16px 0 6px">Währungen: aktuelle Lesung und Punkte</h3>
+    <div class="karte scroll"><table style="min-width:980px"><thead><tr><th class="markt">Währung</th>${kopf}<th>Gesamt</th><th>Einstufung</th><th>Beobachtung Realzins<small>Signal vom ${G.stand_signal ? G.stand_signal.split("-").reverse().join(".") : "–"}</small></th></tr></thead><tbody>${mz}</tbody></table></div>
     <div class="leise kurz" style="margin-top:6px">Lesungen: COT = Index der Großspekulanten (52 Wochen), Saisonalität = Ø der nächsten 4 Wochen und Plus-Jahre (15 Jahre), Zinsen = Zinsabstand zum US-Dollar, Inflation = Rate (Abstand zum Ziel), Arbeitsmarkt = Quote (Veränderung in 6 Monaten), Realzins = Leitzins minus Inflation (beim DX die USA). Die Beobachtung zum Realzinsabstand zeigt, auf welcher Seite die Währung nach der Regel „Kontra“ stünde. Das ist keine Empfehlung, die Regel muss sich erst im Vorwärtstest bestätigen.</div>`;
 }
 
@@ -729,7 +762,7 @@ function kalenderAnzeige() {
     const z = e.map(x => `<tr><td class="markt"><b>${wt(x.datum)} ${d(x.datum)}</b><span class="leise">${in_(x.tage)}</span></td>` +
       `<td class="sz" style="text-align:left">${chip(x.typ)}</td><td class="sz"><b>${W[x.markt]}</b></td><td class="sz" style="text-align:left">${x.text}</td></tr>`).join("");
     return `<h3 style="font-size:15px;margin:16px 0 6px">${titel}</h3>` +
-      `<div class="karte scroll"><table style="min-width:620px"><thead><tr><th class="markt">Datum</th><th style="text-align:left">Was passiert</th><th>Markt</th><th style="text-align:left">Einzelheiten</th></tr></thead><tbody>${z || '<tr><td colspan="4" class="leise">Keine Termine in dieser Zeit.</td></tr>'}</tbody></table></div>`;
+      `<div class="karte scroll"><table style="min-width:620px"><thead><tr><th class="markt">Datum</th><th style="text-align:left">Was passiert</th><th>Währung</th><th style="text-align:left">Einzelheiten</th></tr></thead><tbody>${z || '<tr><td colspan="4" class="leise">Keine Termine in dieser Zeit.</td></tr>'}</tbody></table></div>`;
   }).join("");
   const kurz = DATA.maerkte.map(m => {
     const n = K.naechste[m], b = K.banken[m];
@@ -743,8 +776,8 @@ function kalenderAnzeige() {
     ${K.warnung ? `<div class="karte warn"><b>Hinweis:</b> ${K.warnung}</div>` : ""}
     <div class="legende" style="margin:6px 0">${legende}</div>
     ${teile}
-    <h3 style="font-size:15px;margin:16px 0 6px">Nächster Zinsentscheid je Markt</h3>
-    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Markt</th><th>Nächster Zinsentscheid</th><th>Danach</th><th style="text-align:left">Was ich erfasst habe</th></tr></thead><tbody>${kurz}</tbody></table></div>
+    <h3 style="font-size:15px;margin:16px 0 6px">Nächster Zinsentscheid je Währung</h3>
+    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Währung</th><th>Nächster Zinsentscheid</th><th>Danach</th><th style="text-align:left">Was ich erfasst habe</th></tr></thead><tbody>${kurz}</tbody></table></div>
     <div class="leise kurz" style="margin-top:6px">Nur Anzeige, kein Teil der Bewertung. Rund um einen Zinsentscheid oder einen Arbeitsmarkt- und Inflationsbericht schwanken die Kurse oft stärker, das ist ein Grund zur Vorsicht, kein Signal. Zinsentscheide: von den Webseiten der Notenbanken am ${d(K.stand_liste)} abgelesen, Liste reicht bis ${d(K.letzter_termin)}. Datenveröffentlichungen: abgelesen am ${d(K.daten_stand)}, <b>bisher nur für die USA vollständig</b> (Arbeitsmarkt und Inflation bis März 2027), für Australien und Kanada nur der jeweils nächste Termin. Für Euroraum, Großbritannien, Japan, Schweiz und Neuseeland fehlen sie noch, weil die Statistikämter ihre Termine nur kurzfristig oder schwer lesbar zeigen. Die Uhrzeit ist überall Ortszeit, hier steht nur der Tag. Termine können sich ändern, im Zweifel zählt die Webseite der Stelle. Prognosewerte (erwartet gegen tatsächlich) sind nicht enthalten, dafür bräuchte es eine bezahlte Quelle.</div>`;
 }
 

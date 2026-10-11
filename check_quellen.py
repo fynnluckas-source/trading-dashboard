@@ -49,7 +49,7 @@ def cot():
             status, alter = ampel("COT", letzte)
             if gefunden < len(codes):
                 status = "ROT "
-            zeige(f"CFTC {art}", f"{gefunden} von {len(codes)} Märkten, ältester letzter Stichtag {letzte.date()}"
+            zeige(f"CFTC {art}", f"{gefunden} von {len(codes)} Währungen, ältester letzter Stichtag {letzte.date()}"
                   + (f", FEHLT: {sorted(fehlt)}" if fehlt else ""), status, alter)
         except Exception as e:
             zeige(f"CFTC {art}", f"Fehler: {e}", "ROT ")
@@ -74,7 +74,7 @@ def yahoo():
     status, alter = ampel("Yahoo", aeltester)
     if fehler:
         status = "ROT "
-    zeige("Yahoo", f"{len(config.MAERKTE) - len(fehler)} von {len(config.MAERKTE)} Märkten, ältester letzter Kurs {aeltester.date()}"
+    zeige("Yahoo", f"{len(config.MAERKTE) - len(fehler)} von {len(config.MAERKTE)} Währungen, ältester letzter Kurs {aeltester.date()}"
           + (f", FEHLT: {fehler}" if fehler else ""), status, alter)
 
 
