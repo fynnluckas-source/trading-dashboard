@@ -217,7 +217,7 @@ def bericht(heute, daten=None, hinweis_pull=""):
               f"{'Urteil möglich.' if j['urteil_moeglich'] else 'Noch kein Urteil möglich (frühestens nach ' + str(j['min_tage']) + ' Tagen).'}")
     p("")
     p("---")
-    p("Nächster Bericht am nächsten Sonntag. Die Prüfungen laufen jedes Jahr am 1. Februar noch einmal mit unveränderten Regeln.")
+    p("Nächster Bericht am nächsten Samstag. Die Prüfungen laufen jedes Jahr am 1. Februar noch einmal mit unveränderten Regeln.")
     return "\n".join(zeilen) + "\n"
 
 
