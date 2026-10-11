@@ -107,6 +107,8 @@
 
   <div id="zeitraum"></div>
 
+  <div id="pruefungSaison"></div>
+
   <h2>Was sind die Gruppen?</h2>
   <div class="karte"><dl id="gruppen"></dl></div>
 </main>
@@ -440,6 +442,36 @@ function zeitraum() {
     `Die Future-Reihe ist von Kontraktwechseln bereinigt (Yahoo, inoffiziell). Beim Yen zeigt Seasonax nur 7 bis 8 Jahre als „Trades“, dort weichen die Zahlen ab. Klicke auf eine Zeile, um die Einzeljahre eines Marktes zu sehen.`;
 }
 
+
+function pruefungSaison() {
+  const P = DATA.pruefung_saison, el = document.getElementById("pruefungSaison");
+  if (!P) return;
+  const fm = (x, d = 2) => x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
+  const quellen = {kassa: "Kassa", future: "Future", stabil: "stabil (beide)"};
+  const auswahl = {A: "alle Fenster", B: "bestes Fenster je Markt und Jahr"};
+  const zeilen = [];
+  ["kassa", "future", "stabil"].forEach(q => ["A", "B"].forEach(a => {
+    const zellen = [7, 14, 21, 28].map(L => {
+      const e = P.ergebnisse.find(x => x.quelle === q && x.auswahl === a && x.laenge === L);
+      if (!e || !e.n_trades) return `<td class="sz">–</td>`;
+      return `<td class="sz pz${e.bestanden ? " ja" : ""}" title="${e.n_trades} Trades in ${e.n_phasen} Phasen. Long ${e.n_long}: Ø ${fm(e.mean_long, 3)} %, Short ${e.n_short}: Ø ${fm(e.mean_short, 3)} %. Testjahre im Plus: ${e.jahre_positiv} von ${e.jahre_gesamt}, Märkte im Plus: ${e.maerkte_positiv} von ${e.maerkte_gesamt}. Nach Kosten: Ø ${fm(e.mean_nach_kosten, 3)} %.">` +
+        `<b>${fm(e.mean, 3)} %</b><small class="leise" style="display:block">${e.trefferquote.toFixed(0)} % Treffer, p ${e.p.toFixed(2).replace(".", ",")}</small><small class="leise" style="display:block">${e.n_trades} Trades</small></td>`;
+    }).join("");
+    zeilen.push(`<tr><td class="markt"><b>${quellen[q]}</b><span class="leise">${auswahl[a]}</span></td>${zellen}</tr>`);
+  }));
+  const haupt = P.ergebnisse.find(x => x.quelle === "kassa" && x.auswahl === "A" && x.laenge === P.haupt_laenge);
+  el.innerHTML = `<h2>Prüfung Saisonalität (Etappe 2c)</h2>
+    <div class="karte"><p style="margin-top:0"><b>Ergebnis: ${P.anzahl_bestanden === 0 ? "Keine Variante hat die Prüfung bestanden." : P.anzahl_bestanden + " von " + P.anzahl_tests + " Tests bestanden."}</b>
+      Durch Zufall wären etwa ${String(P.erwartet_zufall).replace(".", ",")} bestandene Tests zu erwarten gewesen. Deine Regel (Winrate ab 60 % und Sharpe ab +1 für Long, bis 40 % und −1 für Short) hat in den Testjahren ${P.testjahre[0]} bis ${P.testjahre[1]} keinen Vorteil gebracht.
+      Hauptfall (Kassa, alle Fenster, 4 Wochen): Ø ${fm(haupt.mean, 3)} % je Trade, ${haupt.trefferquote.toFixed(0)} % Treffer, ${haupt.n_trades} Trades, Zufallstest p ${haupt.p.toFixed(2).replace(".", ",")}.
+      Die Zahlen zeigen: Ø Rendite je Trade vor Kosten, Trefferquote und Zufalls-p. ${P.anzahl_bestanden === 0 ? "Die Saisonalität bekommt deshalb im Punktesystem 0 Punkte und bleibt eine Information (Zeitraum-Rechner, Saisonkurven)." : ""}</p>
+      <div class="scroll"><table style="min-width:640px"><thead><tr><th class="markt">Quelle / Auswahl</th><th>1 Woche</th><th>2 Wochen</th><th>3 Wochen</th><th>4 Wochen</th></tr></thead><tbody>${zeilen.join("")}</tbody></table></div>
+      <p class="leise kurz" style="margin-bottom:0"><b>So wurde geprüft:</b> Für jedes Testjahr und jeden Startpunkt (jede Woche des Jahres) zählt nur, was in den ${P.n_jahre} Jahren davor galt: Winrate und Sharpe wie im Zeitraum-Rechner. Erfüllt ein Fenster deine Regel, wird es im Testjahr zu denselben Kalendertagen gehandelt (Long +Rendite, Short −Rendite). „Bestes Fenster“ = pro Markt und Jahr nur das Fenster mit dem größten Sharpe-Betrag, so wie du es von Hand wählen würdest.
+        Zufallstest: Die Kandidaten-Fenster werden ${P.n_perm}-mal zufällig im Jahr verschoben (alle Märkte gleich weit). Bestanden nur, wenn die Durchschnittsrendite über 0 liegt und p unter 0,05, in mindestens 60 % der Testjahre und in mindestens 5 Märkten im Plus, bei über 50 % Treffern. Kosten (0,03 % je Trade) stehen im Mouseover. Schwellen wurden nicht angepasst.
+        Mit anderen Sharpe-Schwellen (Kassa, 4 Wochen, alle Fenster, nur zur Ansicht): ${P.empfindlichkeit.map(x => "ab " + x.schwelle.toFixed(1).replace(".", ",") + ": " + fm(x.mean, 3) + " % (" + x.n_trades + " Trades)").join("; ")}. Eine bessere Schwelle ist nicht erkennbar.
+        Stand der Rechnung: ${P.berechnet}.</p></div>`;
+}
+
 function aufbau() {
   document.getElementById("marktwahl").innerHTML = DATA.maerkte.map(m => `<button data-markt="${m}">${m}</button>`).join("");
   document.getElementById("gruppen").innerHTML = ALLE.map(g => `<dt>${DATA.gruppen[g].name}</dt><dd>${DATA.gruppen[g].text}</dd>`).join("");
@@ -455,7 +487,7 @@ function aufbau() {
     if (b.dataset.zrquelle) { ZR.quelle = b.dataset.zrquelle; zeitraum(); }
     if (b.dataset.zrwochen) { ZR.ende = zrPlusTage(ZR.start, 7 * +b.dataset.zrwochen); zeitraum(); }
   });
-  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum();
+  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison();
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(() => { chart(); saisonChart(); zeitraum(); }, 50));
 }
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }

@@ -103,6 +103,8 @@ def baue(quellen=None):
     jetzt = datetime.now(timezone.utc)
     pfad_pruefung = HIER / "daten" / "pruefung_cot.json"
     pruefung = json.loads(pfad_pruefung.read_text(encoding="utf-8")) if pfad_pruefung.exists() else None
+    pfad_ps = HIER / "daten" / "pruefung_saison.json"
+    pruefung_saison = json.loads(pfad_ps.read_text(encoding="utf-8")) if pfad_ps.exists() else None
     try:
         saison = saisonalitaet.berechne(kurse_modul.lade(), pd.Timestamp(datetime.now().date()))
     except Exception as e:
@@ -110,6 +112,7 @@ def baue(quellen=None):
         saison = None
     daten = {
         "saison": saison,
+        "pruefung_saison": pruefung_saison,
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),
         "pruefung": pruefung,
