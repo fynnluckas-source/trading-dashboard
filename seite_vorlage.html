@@ -109,7 +109,11 @@
 
   <div id="pruefungSaison"></div>
 
+  <div id="zinsen"></div>
+
   <div id="vorwaerts"></div>
+
+  <div id="verlauf"></div>
 
   <h2>Was sind die Gruppen?</h2>
   <div class="karte"><dl id="gruppen"></dl></div>
@@ -510,6 +514,76 @@ function vorwaertstest() {
     <div class="leise kurz" style="margin-top:6px">Nur zur Beobachtung: Im Rückwärtstest hat diese Regel keinen Vorteil gezeigt (siehe „Prüfung Saisonalität“). Gezeigt werden die ersten 40 Einträge.</div>`;
 }
 
+function pruefungenVerlauf() {
+  const Z = DATA.pruefungen_verlauf, el = document.getElementById("verlauf");
+  if (!Z || !Z.length) return;
+  const d = s => { const [j, m, t] = s.split("-"); return `${t}.${m}.${j}`; };
+  const zeilen = [...Z].sort((a, b) => a.lauf_datum < b.lauf_datum ? 1 : -1).map(z =>
+    `<tr><td class="markt"><b>${d(z.lauf_datum)}</b></td><td class="sz" style="text-align:left">${z.test}</td><td class="sz">${z.anzahl_bestanden} von ${z.anzahl_tests}</td>` +
+    `<td class="sz leise">${String(z.erwartet_zufall).replace(".", ",")}</td><td class="sz leise" style="text-align:left">${z.kennzahl}</td></tr>`).join("");
+  el.innerHTML = `<h2>Prüfungen im Jahresvergleich</h2>
+    <div class="leise">Einmal im Jahr (am 1. Februar) rechnet GitHub alle Prüfungen mit <b>unveränderten Regeln</b> und den neuen Daten noch einmal. Hier siehst du, ob sich ein Ergebnis über die Zeit hält. Die alten Ergebnisse bleiben im Archiv (<code>daten/pruefungen_archiv</code>).</div>
+    <div class="karte scroll" style="margin-top:10px"><table style="min-width:640px"><thead><tr><th class="markt">Lauf</th><th style="text-align:left">Prüfung</th><th>Bestanden</th><th>Zufall erwartet</th><th style="text-align:left">Kennzahl</th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
+}
+
+let zM = null;
+function zinsen() {
+  const Z = DATA.zinsen, el = document.getElementById("zinsen");
+  if (!Z) return;
+  if (!zM) zM = DATA.maerkte[1];
+  const fm = (x, d = 2) => x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
+  const pz = (x, d = 2) => { if (x === null || x === undefined) return "–"; let t = x.toFixed(3); if (t.endsWith("0")) t = x.toFixed(2); return t.replace(".", ",") + " %"; };   // 3,875 bleibt 3,875, 2,5 wird 2,50
+  const dat = s => { const [j, m, t] = s.split("-"); return `${t}.${m}.${j}`; };
+  const farbe = {gruen: "gruen", gelb: "gelb", rot: "rot"};
+  if (!el.dataset.bereit) {
+    el.dataset.bereit = "1";
+    el.innerHTML = `<h2>Zinsen (Etappe 3a)</h2>
+      <div class="leise">Leitzinsen der Notenbanken (Quelle: Bank für Internationalen Zahlungsausgleich, BIS) und der Zinsabstand zum US-Dollar. <b>Zinsabstand = Leitzins der Währung minus US-Leitzins.</b> Ein größerer Abstand heißt, die Währung bringt mehr Zins als der Dollar. Beim DX ist es umgekehrt: US-Leitzins minus gewichteter Durchschnitt von Euro, Yen, Pfund, Kanada-Dollar und Franken.</div>
+      <div class="karte scroll" style="margin-top:10px"><table id="zTabelle" style="min-width:820px"></table></div>
+      <div class="leise kurz" id="zNotiz" style="margin-top:6px"></div>
+      <div class="reihe" role="group" aria-label="Markt" id="zWahl" style="margin-top:14px"></div>
+      <div class="karte"><div id="zChart" style="width:100%;height:420px"></div></div>`;
+    el.addEventListener("click", e => { const b = e.target.closest("[data-zmarkt]"); if (b) { zM = b.dataset.zmarkt; zinsen(); } });
+  }
+  const zeilen = DATA.maerkte.map(m => {
+    const k = Z.maerkte[m];
+    const le = k.letzte_aenderung_datum ? `${dat(k.letzte_aenderung_datum)} (${fm(k.letzte_aenderung_groesse)})` : "keine seit 1999";
+    return `<tr data-zmarkt="${m}" style="cursor:pointer${m === zM ? ";background:rgba(var(--hoch),.12)" : ""}"><td class="markt"><b>${m}</b><span class="leise">${DATA.latest[m].name}</span></td>` +
+      `<td class="sz"><b>${pz(k.leitzins)}</b></td><td class="sz">${pz(k.us_leitzins)}</td><td class="sz"><b class="grosszahl">${fm(k.abstand)}</b></td>` +
+      `<td class="sz">${fm(k.d_abstand_3m)}</td><td class="sz">${fm(k.d_abstand_6m)}</td><td class="sz">${fm(k.d_abstand_12m)}</td>` +
+      `<td class="sz">${le}</td><td class="sz">${k.richtung_12m}<small class="leise" style="display:block">${k.anzahl_aenderungen_12m} Änderung${k.anzahl_aenderungen_12m === 1 ? "" : "en"}</small></td>` +
+      `<td class="sz"><span class="punkt ${farbe[k.ampel]}"></span>${dat(k.datenstand_land)}</td></tr>`;
+  }).join("");
+  document.getElementById("zTabelle").innerHTML =
+    `<thead><tr><th class="markt">Markt</th><th>Leitzins</th><th>US-Leitzins</th><th>Zinsabstand<small>in Prozentpunkten</small></th><th>Δ 3 Monate</th><th>Δ 6 Monate</th><th>Δ 12 Monate</th><th>Letzte Änderung</th><th>Letzte 12 Monate</th><th>Datenstand</th></tr></thead><tbody>${zeilen}</tbody>`;
+  document.getElementById("zNotiz").textContent =
+    `Δ = Veränderung des Zinsabstands (Prozentpunkte). Der Datenstand ist der letzte Tag, den die BIS für dieses Land gemeldet hat. Ein Leitzins gilt bis zur nächsten Meldung weiter. Wenn die BIS ein Land verspätet liefert (z. B. Australien um etwa 2 Wochen), können neuere Zinsentscheidungen noch fehlen. ` +
+    `US-Rendite für 2 Jahre (Marktzins, Erwartung): ${pz(Z.us2y.wert)} am ${dat(Z.us2y.datum)}. Noch keine Bewertung: ob Zinsabstand oder Zinsrichtung etwas über die nächsten Wochen sagen, prüft Etappe 3c.`;
+  document.getElementById("zWahl").innerHTML = DATA.maerkte.map(m => `<button data-zmarkt="${m}" aria-pressed="${m === zM}">${m}</button>`).join("");
+  const v = Z.maerkte[zM].verlauf, text = css("--text"), leise = css("--leise"), linie = css("--linie");
+  const von = new Date(v.datum[v.datum.length - 1]); von.setFullYear(von.getFullYear() - 10);
+  const sicht = v.datum.map((d, i) => [d, i]).filter(([d]) => new Date(d) >= von).map(([, i]) => i);
+  const bereich = arr => { const w = sicht.map(i => arr[i]); const lo = Math.min(...w), hi = Math.max(...w), p = (hi - lo) * 0.08 || 0.5; return [lo - p, hi + p]; };
+  const yLand = bereich([...v.land, ...v.us]), yAb = bereich(v.abstand);
+  const landName = zM === "DX" ? "Korb (Euro, Yen, Pfund, CAD, CHF)" : `${DATA.latest[zM].name}-Leitzins`;
+  Plotly.react("zChart", [
+    {x: v.datum, y: v.land, name: landName, type: "scatter", mode: "lines", line: {color: "#3b82f6", width: 2, shape: "hv"}, xaxis: "x", yaxis: "y", hovertemplate: "%{y:.2f} %<extra>" + landName + "</extra>"},
+    {x: v.datum, y: v.us, name: "US-Leitzins", type: "scatter", mode: "lines", line: {color: "#f59e0b", width: 2, shape: "hv"}, xaxis: "x", yaxis: "y", hovertemplate: "%{y:.2f} %<extra>US-Leitzins</extra>"},
+    {x: v.datum, y: v.abstand, name: "Zinsabstand", type: "scatter", mode: "lines", fill: "tozeroy", line: {color: text, width: 1.5, shape: "hv"}, fillcolor: "rgba(127,127,127,.18)", xaxis: "x", yaxis: "y2", hovertemplate: "%{y:+.2f} Prozentpunkte<extra>Zinsabstand</extra>"}],
+    {margin: {l: 52, r: 12, t: 10, b: 40}, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: {color: text, size: 12}, hovermode: "x unified", dragmode: "pan",
+     legend: {orientation: "h", y: -0.12},
+     xaxis: {range: [von.toISOString().slice(0, 10), v.datum[v.datum.length - 1]], gridcolor: linie, anchor: "y2",
+       rangeselector: {bgcolor: "rgba(0,0,0,0)", activecolor: linie, font: {color: text}, buttons: [{count: 3, label: "3J", step: "year", stepmode: "backward"}, {count: 10, label: "10J", step: "year", stepmode: "backward"}, {count: 20, label: "20J", step: "year", stepmode: "backward"}, {step: "all", label: "Alles"}]}},
+     yaxis: {domain: [0.38, 1], range: yLand, gridcolor: linie, ticksuffix: " %"}, yaxis2: {domain: [0, 0.32], range: yAb, gridcolor: linie, zerolinecolor: leise, title: {text: "Abstand"}}},
+    {responsive: true, displaylogo: false, displayModeBar: false});
+  document.querySelectorAll("#zChart").forEach(c => { if (!c.dataset.fit) { c.dataset.fit = "1";
+    c.on("plotly_relayout", ev => { const k = Object.keys(ev); if (!k.some(x => x.startsWith("xaxis.range") || x === "xaxis.autorange")) return;
+      const [a, b] = c.layout.xaxis.range.map(t => new Date(t).getTime()); const g = {y: [Infinity, -Infinity], y2: [Infinity, -Infinity]};
+      c.data.forEach(sp => sp.x.forEach((x, i) => { const t = new Date(x).getTime(); if (t >= a && t <= b) { const q = g[sp.yaxis], yv = sp.y[i]; q[0] = Math.min(q[0], yv); q[1] = Math.max(q[1], yv); } }));
+      const upd = {}; [["y", "yaxis"], ["y2", "yaxis2"]].forEach(([s, n]) => { const [lo, hi] = g[s]; if (isFinite(lo)) { const p = (hi - lo) * 0.08 || 0.5; upd[n + ".range"] = [lo - p, hi + p]; } });
+      Plotly.relayout(c, upd); }); } });
+}
+
 function aufbau() {
   document.getElementById("marktwahl").innerHTML = DATA.maerkte.map(m => `<button data-markt="${m}">${m}</button>`).join("");
   document.getElementById("gruppen").innerHTML = ALLE.map(g => `<dt>${DATA.gruppen[g].name}</dt><dd>${DATA.gruppen[g].text}</dd>`).join("");
@@ -525,8 +599,8 @@ function aufbau() {
     if (b.dataset.zrquelle) { ZR.quelle = b.dataset.zrquelle; zeitraum(); }
     if (b.dataset.zrwochen) { ZR.ende = zrPlusTage(ZR.start, 7 * +b.dataset.zrwochen); zeitraum(); }
   });
-  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison(); vorwaertstest();
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(() => { chart(); saisonChart(); zeitraum(); }, 50));
+  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison(); zinsen(); vorwaertstest(); pruefungenVerlauf();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(() => { chart(); saisonChart(); zeitraum(); zinsen(); }, 50));
 }
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }
 function berichte() { document.querySelectorAll("[data-bericht]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.bericht === bericht))); }

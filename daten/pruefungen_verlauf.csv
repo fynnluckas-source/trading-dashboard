@@ -1,0 +1,3 @@
+lauf_datum,test,daten_bis,anzahl_tests,anzahl_bestanden,erwartet_zufall,kennzahl
+2026-10-10,COT (Etappe 1d),2026-06-30,15,0,0.3,"0 von 15 bestanden, Zeitraum 2007-07-01 bis 2026-06-30"
+2026-10-11,Saisonalität (Etappe 2c),Testjahre 2016 bis 2025,24,0,0.4,"Hauptfall (Kassa, 4 Wochen): Ø −0,045 %, 50 % Treffer, p 0,57"

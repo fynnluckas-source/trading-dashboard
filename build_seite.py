@@ -17,7 +17,9 @@ import check_quellen
 import config
 import kennzahlen as kz
 import kurse as kurse_modul
+import pruefungen_jaehrlich
 import saisonalitaet
+import zinsen
 
 HIER = Path(__file__).parent
 DOCS = HIER / "docs"
@@ -103,6 +105,20 @@ def baue(quellen=None):
     jetzt = datetime.now(timezone.utc)
     pfad_pruefung = HIER / "daten" / "pruefung_cot.json"
     pruefung = json.loads(pfad_pruefung.read_text(encoding="utf-8")) if pfad_pruefung.exists() else None
+    try:
+        z = zinsen.lade()
+        zin = {"stand": str(z.index.max().date()), "us2y": {"wert": round(float(z["US2Y"].dropna().iloc[-1]), 3), "datum": str(z["US2Y"].last_valid_index().date())},
+               "maerkte": {}}
+        for m in config.MAERKTE:
+            k = zinsen.kennzahlen(z, m)
+            alter = (pd.Timestamp(datetime.now().date()) - pd.Timestamp(k["datenstand_land"])).days
+            gruen, gelb = config.FRISCHE["BIS Zinsen"]
+            k["ampel"] = "gruen" if alter <= gruen else "gelb" if alter <= gelb else "rot"
+            k["verlauf"] = zinsen.verlauf_woechentlich(z, m)
+            zin["maerkte"][m] = k
+    except Exception as e:
+        print(f"::warning::Zinsen konnten nicht aufbereitet werden: {e}")
+        zin = None
     pfad_vw = HIER / "daten" / "vorwaertstest_ergebnis.json"
     vorwaerts = json.loads(pfad_vw.read_text(encoding="utf-8")) if pfad_vw.exists() else None
     pfad_ps = HIER / "daten" / "pruefung_saison.json"
@@ -116,6 +132,8 @@ def baue(quellen=None):
         "saison": saison,
         "pruefung_saison": pruefung_saison,
         "vorwaerts": vorwaerts,
+        "zinsen": zin,
+        "pruefungen_verlauf": pruefungen_jaehrlich.lade_verlauf(),
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),
         "pruefung": pruefung,

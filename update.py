@@ -12,6 +12,7 @@ import config
 import cot
 import kurse
 import vorwaerts
+import zinsen
 
 
 def main():
@@ -36,6 +37,13 @@ def main():
         print(f"Future-Kurse: {fut.shape[1]} Märkte bis {fut.index.max().date()}")
     except Exception as e:
         fehler.append(f"Future-Kurse konnten nicht geladen werden (alte Datei bleibt): {e}")
+        print(f"::error::{fehler[-1]}")
+
+    try:
+        zdf = zinsen.lade(neu=True)  # Leitzinsen (BIS) und US-Rendite 2 Jahre (FRED), bei Fehler bleibt die alte Datei
+        print(f"Zinsen: {len(zdf)} Tage bis {zdf.index.max().date()}")
+    except Exception as e:
+        fehler.append(f"Zinsen konnten nicht geladen werden (alte Datei bleibt): {e}")
         print(f"::error::{fehler[-1]}")
 
     try:

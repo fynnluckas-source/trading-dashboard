@@ -4,7 +4,7 @@ Vorab festgelegt (vor dem ersten Lauf, damit nichts schöngerechnet wird):
   Regel:       Long-Kandidat bei Winrate >= 60 % UND Sharpe >= +1, Short-Kandidat bei Winrate <= 40 % UND Sharpe <= -1
                (Winrate und Sharpe wie im Zeitraum-Rechner, über die letzten 15 abgeschlossenen Jahre VOR dem Testjahr).
   Fenster:     Start jede Woche des Jahres (52 Startpunkte), Länge 7, 14, 21 und 28 Tage. Hauptfall: 28 Tage, Kassakurs, Auswahl A.
-  Testjahre:   2016 bis 2025 (alle Quellen vergleichbar, der Future beginnt im Jahr 2000, 15 Jahre Vorlauf).
+  Testjahre:   2016 bis zum letzten abgeschlossenen Jahr (Stand 2026: 2016 bis 2025; alle Quellen vergleichbar, der Future beginnt im Jahr 2000, 15 Jahre Vorlauf).
   Handel:      Im Testjahr wird das Fenster zu denselben Kalendertagen gehandelt. Long: +Rendite, Short: -Rendite (in Prozent).
   Auswahl A:   Alle Fenster, die die Regel erfüllen. Auswahl B: pro Markt, Jahr und Länge nur das beste Fenster (größter Betrag des Sharpe),
                so wie Fynn es von Hand tun würde.
@@ -38,7 +38,7 @@ DATEN = Path(__file__).parent / "daten"
 LAENGEN = (7, 14, 21, 28)
 HAUPT_LAENGE = 28
 N_JAHRE = 15
-TESTJAHRE = range(2016, 2026)
+TESTJAHRE = range(2016, pd.Timestamp.now().year)   # wächst mit: alle abgeschlossenen Jahre ab 2016 (2026: 2016 bis 2025)
 STARTS = [(t.month, t.day) for t in pd.date_range("2001-01-01", periods=52, freq="7D")]   # 52 Startpunkte, wöchentlich
 W = len(STARTS)
 N_PERM = 2000
@@ -254,7 +254,7 @@ def empfindlichkeit(daten, jahre):
 
 def main():
     kassa, future = kurse.lade(), kurse.lade_future()
-    jahre = list(range(1999, 2027))
+    jahre = list(range(1999, pd.Timestamp.now().year + 2))
     daten = baue(kassa, future, jahre)
     erg = haupt(daten, jahre)
     out = {"berechnet": datetime.now().strftime("%d.%m.%Y"), "testjahre": [min(TESTJAHRE), max(TESTJAHRE)], "n_jahre": N_JAHRE,
