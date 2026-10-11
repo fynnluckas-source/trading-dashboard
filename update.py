@@ -11,6 +11,7 @@ import check_quellen
 import config
 import cot
 import kurse
+import makro
 import vorwaerts
 import zinsen
 
@@ -44,6 +45,16 @@ def main():
         print(f"Zinsen: {len(zdf)} Tage bis {zdf.index.max().date()}")
     except Exception as e:
         fehler.append(f"Zinsen konnten nicht geladen werden (alte Datei bleibt): {e}")
+        print(f"::error::{fehler[-1]}")
+
+    try:
+        mdf = makro.lade(neu=True)  # Inflation und Arbeitsmarkt, eine ausgefallene Reihe behält ihre alten Werte
+        print(f"Makro: {len(mdf)} Zeilen, neueste Periode {mdf['periode'].max().date()}")
+        for schluessel, grund in makro.LETZTE_FEHLER:
+            fehler.append(f"Makro-Reihe {schluessel[0]} {schluessel[1]} ausgefallen (alte Werte bleiben): {grund}")
+            print(f"::warning::{fehler[-1]}")
+    except Exception as e:
+        fehler.append(f"Makrodaten konnten nicht geladen werden (alte Datei bleibt): {e}")
         print(f"::error::{fehler[-1]}")
 
     try:

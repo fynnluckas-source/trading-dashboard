@@ -17,6 +17,7 @@ import check_quellen
 import config
 import kennzahlen as kz
 import kurse as kurse_modul
+import makro
 import pruefungen_jaehrlich
 import saisonalitaet
 import zinsen
@@ -119,6 +120,23 @@ def baue(quellen=None):
     except Exception as e:
         print(f"::warning::Zinsen konnten nicht aufbereitet werden: {e}")
         zin = None
+    try:
+        mk = makro.lade()
+        zl = zinsen.lade()
+        mak = {"maerkte": {}}
+        for mkt, cfg in config.MAERKTE.items():
+            land = cfg["bis"]
+            k = makro.kennzahlen(mk, land, leitzins=float(zl[land].dropna().iloc[-1]))
+            def reihe(groesse):
+                s = makro.serie(mk, land, groesse)
+                return {"datum": [t.strftime("%Y-%m-%d") for t in s.index], "wert": [round(float(x), 3) for x in s.values]}
+            monat = zl[land].dropna().resample("ME").last()
+            k["verlauf"] = {"inflation": reihe("inflation"), "arbeitslos": reihe("arbeitslos"),
+                            "leitzins": {"datum": [t.strftime("%Y-%m-%d") for t in monat.index], "wert": [round(float(x), 3) for x in monat.values]}}
+            mak["maerkte"][mkt] = k
+    except Exception as e:
+        print(f"::warning::Makrodaten konnten nicht aufbereitet werden: {e}")
+        mak = None
     pfad_vw = HIER / "daten" / "vorwaertstest_ergebnis.json"
     vorwaerts = json.loads(pfad_vw.read_text(encoding="utf-8")) if pfad_vw.exists() else None
     pfad_ps = HIER / "daten" / "pruefung_saison.json"
@@ -133,6 +151,7 @@ def baue(quellen=None):
         "pruefung_saison": pruefung_saison,
         "vorwaerts": vorwaerts,
         "zinsen": zin,
+        "makro": mak,
         "pruefungen_verlauf": pruefungen_jaehrlich.lade_verlauf(),
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),
