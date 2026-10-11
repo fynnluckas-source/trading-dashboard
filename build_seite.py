@@ -19,6 +19,8 @@ import kennzahlen as kz
 import kurse as kurse_modul
 import makro
 import pruefungen_jaehrlich
+import punktesystem
+import vorwaerts_realzins
 import saisonalitaet
 import zinsen
 
@@ -137,6 +139,15 @@ def baue(quellen=None):
     except Exception as e:
         print(f"::warning::Makrodaten konnten nicht aufbereitet werden: {e}")
         mak = None
+    try:
+        fr = vorwaerts_realzins.letzter_freitag(pd.Timestamp(datetime.now().date()))
+        f5 = vorwaerts_realzins.signal_fuer(zinsen.lade(), makro.lade(), fr)
+        ps = punktesystem.berechne({m: (float(v) if pd.notna(v) else float("nan")) for m, v in f5.items()}, stand_signal=fr.strftime("%Y-%m-%d"))
+    except Exception as e:
+        print(f"::warning::Punktesystem konnte nicht berechnet werden: {e}")
+        ps = None
+    pfad_vr = HIER / "daten" / "vorwaertstest_realzins_ergebnis.json"
+    vorwaerts_rz = json.loads(pfad_vr.read_text(encoding="utf-8")) if pfad_vr.exists() else None
     pfad_pm = HIER / "daten" / "pruefung_makro.json"
     pruefung_makro = json.loads(pfad_pm.read_text(encoding="utf-8")) if pfad_pm.exists() else None
     pfad_vw = HIER / "daten" / "vorwaertstest_ergebnis.json"
@@ -155,6 +166,8 @@ def baue(quellen=None):
         "zinsen": zin,
         "makro": mak,
         "pruefung_makro": pruefung_makro,
+        "punktesystem": ps,
+        "vorwaerts_realzins": vorwaerts_rz,
         "pruefungen_verlauf": pruefungen_jaehrlich.lade_verlauf(),
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),

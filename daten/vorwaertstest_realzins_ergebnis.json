@@ -1,0 +1,19 @@
+{
+ "stand": "11.10.2026",
+ "regel": "3c-v1",
+ "erfasst": 1,
+ "min_wochen_beobachtung": 52,
+ "min_wochen_ausgewertet": 40,
+ "letzte": [
+  {
+   "signal": "2026-10-09",
+   "lang": "6N 6S 6C",
+   "kurz": "6E 6A 6B",
+   "ergebnis": null
+  }
+ ],
+ "beginn": "11.10.2026",
+ "wochen_beobachtung": 0,
+ "ausgewertet": 0,
+ "urteil_moeglich": false
+}

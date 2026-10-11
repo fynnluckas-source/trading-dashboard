@@ -13,6 +13,7 @@ import cot
 import kurse
 import makro
 import vorwaerts
+import vorwaerts_realzins
 import zinsen
 
 
@@ -62,6 +63,13 @@ def main():
         print(f"Vorwärtstest: {n_neu} neue Signale, {n_aus} neu ausgewertet, insgesamt {z['erfasst']}")
     except Exception as e:
         fehler.append(f"Vorwärtstest fehlgeschlagen: {e}")
+        print(f"::error::{fehler[-1]}")
+
+    try:
+        n_neu, n_aus, z = vorwaerts_realzins.lauf()      # Vorwärtstest Realzinsabstand: Freitags-Signal festhalten, 2 Wochen später auswerten
+        print(f"Vorwärtstest Realzins: {n_neu} neu erfasst, {n_aus} neu ausgewertet, insgesamt {z['erfasst']}")
+    except Exception as e:
+        fehler.append(f"Vorwärtstest Realzins fehlgeschlagen: {e}")
         print(f"::error::{fehler[-1]}")
 
     quellen = check_quellen.alle()

@@ -76,6 +76,8 @@
   <div class="karte status" id="status"></div>
   <div id="hinweise"></div>
 
+  <div id="gesamt"></div>
+
   <h2>Übersicht: COT-Index</h2>
   <div class="leise">Der Index zeigt, wo die Netto-Position der Gruppe im Bereich der letzten Wochen steht: 0 = tiefster Wert, 100 = höchster Wert. Darunter stehen die Netto-Position (Long minus Short, in Kontrakten) und die Veränderung zur Vorwoche.</div>
   <div class="reihe" role="group" aria-label="Zeitraum des Index">
@@ -116,6 +118,8 @@
   <div id="pruefungMakro"></div>
 
   <div id="vorwaerts"></div>
+
+  <div id="vwRealzins"></div>
 
   <div id="verlauf"></div>
 
@@ -670,6 +674,59 @@ function pruefungMakro() {
         Bestanden nur, wenn der Zufallstest (${P.n_perm} Verschiebungen) p unter 0,05 ergibt, die Richtung gleich bleibt, sie auch ohne jede einzelne der 7 Währungen in mindestens 6 Fällen gleich bleibt und in über 50 % der Wochen stimmt. Der Realzinsabstand ist Leitzins minus Inflation, Währung minus USA. Kassakurse enthalten <b>keinen Zins (Swap)</b>: Wer die Währung mit dem höheren Zins verkauft, zahlt Swap, das kann einen kleinen Vorteil auffressen. Stand der Rechnung: ${P.berechnet}.</p></div>`;
 }
 
+function gesamtbewertung() {
+  const G = DATA.punktesystem, el = document.getElementById("gesamt");
+  if (!G) return;
+  const fm = (x, d = 2) => x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
+  const pz = (x, d = 2) => x === null || x === undefined ? "–" : x.toFixed(d).replace(".", ",") + " %";
+  const chip = {nicht_bestanden: ["nicht bestanden", "var(--leise)"], hinweis: ["Hinweis (Beobachtung)", "var(--gelb)"], bestaetigt: ["bestätigt", "var(--gruen)"]};
+  const regel = {nicht_bestanden: "0 Punkte, bleibt Information", hinweis: "0 Punkte, läuft als Beobachtung mit", bestaetigt: "Punkte nach fester Regel"};
+  const fz = G.faktoren.map(f => `<tr><td class="markt"><b>${f.name}</b><span class="leise">Etappe ${f.etappe}</span></td>` +
+    `<td class="sz" style="text-align:left">${f.text}</td><td class="sz"><b style="color:${chip[f.status][1]}">${chip[f.status][0]}</b></td><td class="sz" style="text-align:left">${regel[f.status]}</td></tr>`).join("");
+  const lese = (m, key) => {
+    const L = DATA.latest[m], S = DATA.saison && DATA.saison.maerkte[m]["15"], Z = DATA.zinsen && DATA.zinsen.maerkte[m], K = DATA.makro && DATA.makro.maerkte[m];
+    if (key === "cot") { const i = L.gruppen.spec.idx52; return i === null ? "–" : `Index ${Math.round(i)}`; }
+    if (key === "saison") return S ? `${fm(S.ausblick.mean)} %, ${S.ausblick.plus} von ${S.ausblick.n}` : "–";
+    if (key === "zinsen") return Z ? `Abstand ${fm(Z.abstand)}` : "–";
+    if (key === "inflation") return K ? `${pz(K.inflation)} (${fm(K.inflation_abstand_ziel, 1)})` : "–";
+    if (key === "arbeit") return K ? `${pz(K.arbeitslos, 1)} (${fm(K.arbeitslos_veraenderung, 1)})` : "–";
+    if (key === "realzins") return K ? fm(K.realzins) : "–";
+    return "–";
+  };
+  const gr = {lang: "Long-Gruppe", kurz: "Short-Gruppe", mitte: "Mitte"};
+  const spalten = G.faktoren.map(f => f.key);
+  const mz = DATA.maerkte.map(m => {
+    const k = G.maerkte[m];
+    const zellen = spalten.map(key => `<td class="sz"><span class="leise" style="font-size:12px">${lese(m, key)}</span><small style="display:block"><b>${k.punkte[key] > 0 ? "+" : ""}${k.punkte[key]}</b> P</small></td>`).join("");
+    const beo = k.realzins_gruppe ? `${gr[k.realzins_gruppe]}<small class="leise" style="display:block">Kontra: ${k.realzins_gruppe === "lang" ? "Long" : k.realzins_gruppe === "kurz" ? "Short" : "keine Seite"}</small>` : "–";
+    return `<tr><td class="markt"><b>${m}</b><span class="leise">${DATA.latest[m].name}</span></td>${zellen}<td class="sz"><b class="grosszahl">${k.gesamt > 0 ? "+" : ""}${k.gesamt}</b></td><td class="sz"><b>${k.stufe}</b></td><td class="sz">${beo}</td></tr>`;
+  }).join("");
+  const kopf = G.faktoren.map(f => `<th>${f.name.split(" (")[0]}<small>Lesung / Punkte</small></th>`).join("");
+  el.innerHTML = `<h2>Gesamtbewertung (Etappe 4)</h2>
+    <div class="karte ${G.bestaetigt === 0 ? "warn" : ""}"><p style="margin:0"><b>${G.bestaetigt === 0 ? "Noch keine Bewertung möglich." : G.bestaetigt + " bestätigte" + (G.bestaetigt === 1 ? "r Faktor" : " Faktoren") + " fließen ein."}</b>
+      Ein Faktor bekommt nur Punkte, wenn er den Rückwärtstest <b>und</b> den Vorwärtstest bestanden hat. ${G.bestaetigt === 0 ? "Das hat bisher keiner geschafft. Deshalb zeigt die Tabelle die aktuelle Lesung jedes Faktors als Information, vergibt aber überall 0 Punkte. Das Dashboard sagt also bewusst nicht „bullisch“ oder „bärisch“, solange es dafür keinen geprüften Grund gibt." : ""}</p></div>
+    <h3 style="font-size:15px;margin:16px 0 6px">Faktoren und ihr Status</h3>
+    <div class="karte scroll"><table style="min-width:680px"><thead><tr><th class="markt">Faktor</th><th style="text-align:left">Prüfergebnis</th><th>Status</th><th style="text-align:left">Punkte</th></tr></thead><tbody>${fz}</tbody></table></div>
+    <h3 style="font-size:15px;margin:16px 0 6px">Märkte: aktuelle Lesung und Punkte</h3>
+    <div class="karte scroll"><table style="min-width:980px"><thead><tr><th class="markt">Markt</th>${kopf}<th>Gesamt</th><th>Einstufung</th><th>Beobachtung Realzins<small>Signal vom ${G.stand_signal ? G.stand_signal.split("-").reverse().join(".") : "–"}</small></th></tr></thead><tbody>${mz}</tbody></table></div>
+    <div class="leise kurz" style="margin-top:6px">Lesungen: COT = Index der Großspekulanten (52 Wochen), Saisonalität = Ø der nächsten 4 Wochen und Plus-Jahre (15 Jahre), Zinsen = Zinsabstand zum US-Dollar, Inflation = Rate (Abstand zum Ziel), Arbeitsmarkt = Quote (Veränderung in 6 Monaten), Realzins = Leitzins minus Inflation (beim DX die USA). Die Beobachtung zum Realzinsabstand zeigt, auf welcher Seite die Währung nach der Regel „Kontra“ stünde. Das ist keine Empfehlung, die Regel muss sich erst im Vorwärtstest bestätigen.</div>`;
+}
+
+function vorwaertsRealzins() {
+  const V = DATA.vorwaerts_realzins, el = document.getElementById("vwRealzins");
+  if (!V) return;
+  const fm = (x, d = 3) => x === null || x === undefined ? "–" : (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d).replace(".", ",");
+  const d = s => s.split("-").reverse().join(".");
+  const zeilen = V.letzte.map(v => `<tr><td class="markt"><b>${d(v.signal)}</b></td><td class="sz">${v.lang}</td><td class="sz">${v.kurz}</td><td class="sz"><b>${v.ergebnis === null ? "offen" : fm(v.ergebnis) + " %"}</b></td></tr>`).join("");
+  const status = V.urteil_moeglich ? `<b>Urteil möglich: ${V.bestanden ? "bestanden" : "nicht bestanden"}.</b>`
+    : `<b>Noch kein Urteil möglich, nur Zwischenstand.</b> Ein Urteil gibt es frühestens nach ${V.min_wochen_beobachtung} Wochen Beobachtung und ${V.min_wochen_ausgewertet} ausgewerteten Wochen.`;
+  el.innerHTML = `<h2>Vorwärtstest Realzinsabstand (läuft seit ${V.beginn})</h2>
+    <div class="karte"><p style="margin-top:0">${status} Beobachtung: ${V.wochen_beobachtung} Wochen, ausgewertet: ${V.ausgewertet}, erfasst: ${V.erfasst}.
+      ${V.ausgewertet ? `Bisher Ø ${fm(V.mittel_pct)} % je Woche (Long niedrigster minus Short höchster Realzinsabstand, vor Kosten und Swap), ${V.trefferquote.toFixed(0).replace(".", ",")} % der Wochen im Plus.` : ""}</p>
+      <p class="leise kurz">Jeden Freitag werden die 7 Währungen nach dem Realzinsabstand sortiert und das Signal <b>einmalig festgehalten</b> (nie verändert, nur bis Montag danach, nichts wird nachträglich erfasst): Long die 3 mit dem niedrigsten, Short die 3 mit dem höchsten Wert („Kontra“, so im Training festgelegt). Nach 2 Wochen kommt die echte Rendite dazu. Es gelten dieselben Kriterien wie in Etappe 3c. Protokoll im öffentlichen GitHub: <code>daten/vorwaertstest_realzins.csv</code>.</p>
+      <div class="scroll"><table style="min-width:520px"><thead><tr><th class="markt">Signal vom</th><th>Long</th><th>Short</th><th>Ergebnis (2 Wochen)</th></tr></thead><tbody>${zeilen || '<tr><td colspan="4" class="leise">Noch kein Signal.</td></tr>'}</tbody></table></div></div>`;
+}
+
 function aufbau() {
   document.getElementById("marktwahl").innerHTML = DATA.maerkte.map(m => `<button data-markt="${m}">${m}</button>`).join("");
   document.getElementById("gruppen").innerHTML = ALLE.map(g => `<dt>${DATA.gruppen[g].name}</dt><dd>${DATA.gruppen[g].text}</dd>`).join("");
@@ -685,7 +742,7 @@ function aufbau() {
     if (b.dataset.zrquelle) { ZR.quelle = b.dataset.zrquelle; zeitraum(); }
     if (b.dataset.zrwochen) { ZR.ende = zrPlusTage(ZR.start, 7 * +b.dataset.zrwochen); zeitraum(); }
   });
-  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison(); zinsen(); makroAnzeige(); pruefungMakro(); vorwaertstest(); pruefungenVerlauf();
+  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison(); zinsen(); makroAnzeige(); pruefungMakro(); vorwaertstest(); vorwaertsRealzins(); pruefungenVerlauf(); gesamtbewertung();
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(() => { chart(); saisonChart(); zeitraum(); zinsen(); makroAnzeige(); }, 50));
 }
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }

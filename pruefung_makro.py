@@ -87,7 +87,8 @@ def land_reihen(zdf, mk, land, wochen):
     return {"infl": zum_stichtag(bekannt_ab(inf, lag_i), wochen),
             "infl_trend": zum_stichtag(bekannt_ab(veraenderung(inf, 3), lag_i), wochen),
             "alo_chg": zum_stichtag(bekannt_ab(veraenderung(alo, 6), lag_a), wochen),
-            "zins": zins.reindex(wochen), "zins_6m": zins.reindex(wochen - pd.DateOffset(months=6)).set_axis(wochen)}
+            "zins": zum_stichtag(zins.dropna(), wochen),                                # Leitzins gilt bis zur nächsten BIS-Meldung weiter
+            "zins_6m": zum_stichtag(zins.dropna(), wochen - pd.DateOffset(months=6)).set_axis(wochen)}
 
 
 def faktor_tabellen(zdf, mk, wochen):
