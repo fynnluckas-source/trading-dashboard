@@ -784,6 +784,29 @@ function aufbau() {
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }
 function berichte() { document.querySelectorAll("[data-bericht]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.bericht === bericht))); }
 aufbau();
+
+// Anzeige: Future-Codes (DX, 6E, ...) überall als Währungskürzel zeigen. Intern bleiben die Codes unverändert, nur der sichtbare Text wird ersetzt.
+(function () {
+  const NAME = {DX: "DXY", "6E": "EUR", "6B": "GBP", "6J": "JPY", "6S": "CHF", "6A": "AUD", "6N": "NZD", "6C": "CAD"};
+  const MUSTER = "\\b(DX(?!-Y)|6[ABCEJNS])\\b";
+  const FINDE = new RegExp(MUSTER);
+  let geplant = false;
+  const obs = new MutationObserver(() => { if (!geplant) { geplant = true; requestAnimationFrame(laufen); } });
+  function laufen() {
+    geplant = false;
+    obs.disconnect();
+    try {
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: n => /^(SCRIPT|STYLE|TEXTAREA)$/i.test(n.parentNode.nodeName) || !FINDE.test(n.nodeValue) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+      });
+      const liste = [];
+      while (w.nextNode()) liste.push(w.currentNode);
+      liste.forEach(n => { n.nodeValue = n.nodeValue.replace(new RegExp(MUSTER, "g"), c => NAME[c]); });
+    } catch (e) { /* notfalls bleiben die Future-Codes sichtbar */ }
+    obs.observe(document.body, {childList: true, subtree: true, characterData: true});
+  }
+  laufen();
+})();
 </script>
 </body>
 </html>
