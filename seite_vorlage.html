@@ -717,6 +717,7 @@ function gesamtbewertung() {
 function kalenderAnzeige() {
   const K = DATA.kalender, el = document.getElementById("kalender");
   if (!K) return;
+  const W = {DX: "DXY", "6E": "EUR", "6B": "GBP", "6J": "JPY", "6S": "CHF", "6A": "AUD", "6N": "NZD", "6C": "CAD"};
   const d = s => { const [j, m, t] = s.split("-"); return `${t}.${m}.${j}`; };
   const wt = s => ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][new Date(s + "T12:00:00").getDay()];
   const in_ = n => n === 0 ? "heute" : n === 1 ? "morgen" : `in ${n} Tagen`;
@@ -726,13 +727,13 @@ function kalenderAnzeige() {
   const teile = gruppen.map(([titel, von, bis]) => {
     const e = K.ereignisse.filter(x => x.tage >= von && x.tage <= bis);
     const z = e.map(x => `<tr><td class="markt"><b>${wt(x.datum)} ${d(x.datum)}</b><span class="leise">${in_(x.tage)}</span></td>` +
-      `<td class="sz" style="text-align:left">${chip(x.typ)}</td><td class="sz"><b>${x.markt}</b></td><td class="sz" style="text-align:left">${x.text}</td></tr>`).join("");
+      `<td class="sz" style="text-align:left">${chip(x.typ)}</td><td class="sz"><b>${W[x.markt]}</b></td><td class="sz" style="text-align:left">${x.text}</td></tr>`).join("");
     return `<h3 style="font-size:15px;margin:16px 0 6px">${titel}</h3>` +
       `<div class="karte scroll"><table style="min-width:620px"><thead><tr><th class="markt">Datum</th><th style="text-align:left">Was passiert</th><th>Markt</th><th style="text-align:left">Einzelheiten</th></tr></thead><tbody>${z || '<tr><td colspan="4" class="leise">Keine Termine in dieser Zeit.</td></tr>'}</tbody></table></div>`;
   }).join("");
   const kurz = DATA.maerkte.map(m => {
     const n = K.naechste[m], b = K.banken[m];
-    return `<tr><td class="markt"><b>${m}</b><span class="leise">${b.kurz}</span></td>` +
+    return `<tr><td class="markt"><b>${W[m]}</b><span class="leise">${b.kurz}</span></td>` +
       `<td class="sz">${n.datum ? `<b>${wt(n.datum)} ${d(n.datum)}</b><small style="display:block">${in_(n.tage)}</small>` : "–"}</td>` +
       `<td class="sz">${n.danach ? d(n.danach) : "–"}</td>` +
       `<td class="sz" style="text-align:left"><span class="leise">${K.abdeckung[m] ? "Erfasst: " + K.abdeckung[m] : "Erfasst: Zinsentscheide bis März 2027, Daten fehlen"}${b.anmerkung ? ". " + b.anmerkung : ""}</span></td></tr>`;
