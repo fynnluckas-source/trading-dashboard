@@ -47,3 +47,23 @@ def test_liste_ab_sortiert_und_begrenzt():
     assert [x["datum"] for x in z] == sorted(x["datum"] for x in z)
     assert all(0 <= x["tage"] <= 30 for x in z)
     assert {x["markt"] for x in z} == {"DX", "6E", "6J", "6N", "6C", "6A", "6B"}      # 6S entscheidet erst am 10.12.
+
+
+def test_ereignisse_enthalten_zins_und_daten_sortiert():
+    e = k.ereignisse("2026-10-11", 60)
+    assert [x["datum"] for x in e] == sorted(x["datum"] for x in e)
+    typen = {x["typ"] for x in e}
+    assert typen == {"zins", "inflation", "arbeit"}
+    assert any(x["markt"] == "DX" and x["typ"] == "arbeit" and x["datum"] == "2026-11-06" for x in e)
+    assert all(0 <= x["tage"] <= 60 for x in e)
+
+
+def test_datentermine_gueltig_werktage_und_bekannte_typen():
+    for t, m, typ, text in k.DATEN_TERMINE:
+        assert m in k.NOTENBANKEN and typ in ("inflation", "arbeit") and text
+        assert pd.Timestamp(t).dayofweek < 5, (t, m)
+
+
+def test_berechne_hat_ereignisse():
+    r = k.berechne("2026-10-11")
+    assert r["ereignisse"] and set(r["typen"]) == {"zins", "inflation", "arbeit"}

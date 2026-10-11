@@ -720,21 +720,31 @@ function kalenderAnzeige() {
   const d = s => { const [j, m, t] = s.split("-"); return `${t}.${m}.${j}`; };
   const wt = s => ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][new Date(s + "T12:00:00").getDay()];
   const in_ = n => n === 0 ? "heute" : n === 1 ? "morgen" : `in ${n} Tagen`;
-  const zeilen = DATA.maerkte.map(m => {
-    const n = K.naechste[m], b = K.banken[m];
-    const nah = n.datum && n.tage <= 7;
-    return `<tr><td class="markt"><b>${m}</b><span class="leise">${b.kurz}</span></td>` +
-      `<td class="sz">${n.datum ? `<b${nah ? ' style="color:var(--gelb)"' : ""}>${wt(n.datum)} ${d(n.datum)}</b><small style="display:block">${in_(n.tage)}</small>` : "–"}</td>` +
-      `<td class="sz">${n.danach ? `${d(n.danach)}` : "–"}</td>` +
-      `<td class="sz" style="text-align:left"><span class="leise">${b.name}${b.anmerkung ? ". " + b.anmerkung : ""}</span></td></tr>`;
+  const farbe = {zins: "#60a5fa", inflation: "var(--gelb)", arbeit: "var(--gruen)"};
+  const chip = t => `<span style="display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid ${farbe[t]};color:${farbe[t]};font-size:12px;font-weight:600;white-space:nowrap">${K.typen[t].name}</span>`;
+  const gruppen = [["In den nächsten 7 Tagen", 0, 7], ["In 8 bis 30 Tagen", 8, 30], ["In 31 bis 60 Tagen", 31, 60]];
+  const teile = gruppen.map(([titel, von, bis]) => {
+    const e = K.ereignisse.filter(x => x.tage >= von && x.tage <= bis);
+    const z = e.map(x => `<tr><td class="markt"><b>${wt(x.datum)} ${d(x.datum)}</b><span class="leise">${in_(x.tage)}</span></td>` +
+      `<td class="sz" style="text-align:left">${chip(x.typ)}</td><td class="sz"><b>${x.markt}</b></td><td class="sz" style="text-align:left">${x.text}</td></tr>`).join("");
+    return `<h3 style="font-size:15px;margin:16px 0 6px">${titel}</h3>` +
+      `<div class="karte scroll"><table style="min-width:620px"><thead><tr><th class="markt">Datum</th><th style="text-align:left">Was passiert</th><th>Markt</th><th style="text-align:left">Einzelheiten</th></tr></thead><tbody>${z || '<tr><td colspan="4" class="leise">Keine Termine in dieser Zeit.</td></tr>'}</tbody></table></div>`;
   }).join("");
-  const folge = K.liste.slice(0, 12).map(x => `<tr><td class="markt"><b>${wt(x.datum)} ${d(x.datum)}</b></td><td class="sz">${x.bank} (${x.markt})</td><td class="sz">${in_(x.tage)}</td></tr>`).join("");
-  el.innerHTML = `<h2>Termine: Zinsentscheide der Notenbanken (Etappe 5)</h2>
+  const kurz = DATA.maerkte.map(m => {
+    const n = K.naechste[m], b = K.banken[m];
+    return `<tr><td class="markt"><b>${m}</b><span class="leise">${b.kurz}</span></td>` +
+      `<td class="sz">${n.datum ? `<b>${wt(n.datum)} ${d(n.datum)}</b><small style="display:block">${in_(n.tage)}</small>` : "–"}</td>` +
+      `<td class="sz">${n.danach ? d(n.danach) : "–"}</td>` +
+      `<td class="sz" style="text-align:left"><span class="leise">${K.abdeckung[m] ? "Erfasst: " + K.abdeckung[m] : "Erfasst: Zinsentscheide bis März 2027, Daten fehlen"}${b.anmerkung ? ". " + b.anmerkung : ""}</span></td></tr>`;
+  }).join("");
+  const legende = Object.keys(K.typen).map(t => `<span>${chip(t)} ${K.typen[t].text}</span>`).join("");
+  el.innerHTML = `<h2>Termine: Zinsentscheide und Datenveröffentlichungen (Etappe 5)</h2>
     ${K.warnung ? `<div class="karte warn"><b>Hinweis:</b> ${K.warnung}</div>` : ""}
-    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Markt</th><th>Nächster Zinsentscheid</th><th>Danach</th><th style="text-align:left">Notenbank</th></tr></thead><tbody>${zeilen}</tbody></table></div>
-    <h3 style="font-size:15px;margin:16px 0 6px">Die nächsten Termine in Reihenfolge</h3>
-    <div class="karte scroll"><table style="min-width:420px"><thead><tr><th class="markt">Datum</th><th>Notenbank</th><th>Wann</th></tr></thead><tbody>${folge || '<tr><td colspan="3" class="leise">Keine Termine in den nächsten 120 Tagen.</td></tr>'}</tbody></table></div>
-    <div class="leise kurz" style="margin-top:6px">Nur Anzeige, kein Teil der Bewertung. Rund um einen Zinsentscheid schwanken die Kurse oft stärker, das ist ein Grund zur Vorsicht, kein Signal. Termine von den Webseiten der Notenbanken abgelesen am ${d(K.stand_liste)}, die Liste reicht bis ${d(K.letzter_termin)}. Die Uhrzeit ist je Notenbank anders (Ortszeit), hier steht nur der Tag. Termine können sich ändern, im Zweifel zählt die Webseite der Notenbank. Wichtige Datenveröffentlichungen (z. B. US-Arbeitsmarktbericht, Inflationsdaten) und Prognosewerte sind nicht enthalten, dafür bräuchte es eine bezahlte Quelle.</div>`;
+    <div class="legende" style="margin:6px 0">${legende}</div>
+    ${teile}
+    <h3 style="font-size:15px;margin:16px 0 6px">Nächster Zinsentscheid je Markt</h3>
+    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Markt</th><th>Nächster Zinsentscheid</th><th>Danach</th><th style="text-align:left">Was ich erfasst habe</th></tr></thead><tbody>${kurz}</tbody></table></div>
+    <div class="leise kurz" style="margin-top:6px">Nur Anzeige, kein Teil der Bewertung. Rund um einen Zinsentscheid oder einen Arbeitsmarkt- und Inflationsbericht schwanken die Kurse oft stärker, das ist ein Grund zur Vorsicht, kein Signal. Zinsentscheide: von den Webseiten der Notenbanken am ${d(K.stand_liste)} abgelesen, Liste reicht bis ${d(K.letzter_termin)}. Datenveröffentlichungen: abgelesen am ${d(K.daten_stand)}, <b>bisher nur für die USA vollständig</b> (Arbeitsmarkt und Inflation bis März 2027), für Australien und Kanada nur der jeweils nächste Termin. Für Euroraum, Großbritannien, Japan, Schweiz und Neuseeland fehlen sie noch, weil die Statistikämter ihre Termine nur kurzfristig oder schwer lesbar zeigen. Die Uhrzeit ist überall Ortszeit, hier steht nur der Tag. Termine können sich ändern, im Zweifel zählt die Webseite der Stelle. Prognosewerte (erwartet gegen tatsächlich) sind nicht enthalten, dafür bräuchte es eine bezahlte Quelle.</div>`;
 }
 
 function vorwaertsRealzins() {
