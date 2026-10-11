@@ -19,6 +19,7 @@ import kennzahlen as kz
 import kurse as kurse_modul
 import makro
 import pruefungen_jaehrlich
+import kalender
 import punktesystem
 import vorwaerts_realzins
 import saisonalitaet
@@ -146,6 +147,11 @@ def baue(quellen=None):
     except Exception as e:
         print(f"::warning::Punktesystem konnte nicht berechnet werden: {e}")
         ps = None
+    try:
+        kal = kalender.berechne(datetime.now().date())
+    except Exception as e:
+        print(f"::warning::Kalender konnte nicht berechnet werden: {e}")
+        kal = None
     pfad_vr = HIER / "daten" / "vorwaertstest_realzins_ergebnis.json"
     vorwaerts_rz = json.loads(pfad_vr.read_text(encoding="utf-8")) if pfad_vr.exists() else None
     pfad_pm = HIER / "daten" / "pruefung_makro.json"
@@ -167,6 +173,7 @@ def baue(quellen=None):
         "makro": mak,
         "pruefung_makro": pruefung_makro,
         "punktesystem": ps,
+        "kalender": kal,
         "vorwaerts_realzins": vorwaerts_rz,
         "pruefungen_verlauf": pruefungen_jaehrlich.lade_verlauf(),
         "kurse": kurse_fuer_seite(kurse_modul.lade()),

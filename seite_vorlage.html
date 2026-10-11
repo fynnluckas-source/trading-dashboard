@@ -78,6 +78,8 @@
 
   <div id="gesamt"></div>
 
+  <div id="kalender"></div>
+
   <h2>Übersicht: COT-Index</h2>
   <div class="leise">Der Index zeigt, wo die Netto-Position der Gruppe im Bereich der letzten Wochen steht: 0 = tiefster Wert, 100 = höchster Wert. Darunter stehen die Netto-Position (Long minus Short, in Kontrakten) und die Veränderung zur Vorwoche.</div>
   <div class="reihe" role="group" aria-label="Zeitraum des Index">
@@ -712,6 +714,29 @@ function gesamtbewertung() {
     <div class="leise kurz" style="margin-top:6px">Lesungen: COT = Index der Großspekulanten (52 Wochen), Saisonalität = Ø der nächsten 4 Wochen und Plus-Jahre (15 Jahre), Zinsen = Zinsabstand zum US-Dollar, Inflation = Rate (Abstand zum Ziel), Arbeitsmarkt = Quote (Veränderung in 6 Monaten), Realzins = Leitzins minus Inflation (beim DX die USA). Die Beobachtung zum Realzinsabstand zeigt, auf welcher Seite die Währung nach der Regel „Kontra“ stünde. Das ist keine Empfehlung, die Regel muss sich erst im Vorwärtstest bestätigen.</div>`;
 }
 
+function kalenderAnzeige() {
+  const K = DATA.kalender, el = document.getElementById("kalender");
+  if (!K) return;
+  const d = s => { const [j, m, t] = s.split("-"); return `${t}.${m}.${j}`; };
+  const wt = s => ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][new Date(s + "T12:00:00").getDay()];
+  const in_ = n => n === 0 ? "heute" : n === 1 ? "morgen" : `in ${n} Tagen`;
+  const zeilen = DATA.maerkte.map(m => {
+    const n = K.naechste[m], b = K.banken[m];
+    const nah = n.datum && n.tage <= 7;
+    return `<tr><td class="markt"><b>${m}</b><span class="leise">${b.kurz}</span></td>` +
+      `<td class="sz">${n.datum ? `<b${nah ? ' style="color:var(--gelb)"' : ""}>${wt(n.datum)} ${d(n.datum)}</b><small style="display:block">${in_(n.tage)}</small>` : "–"}</td>` +
+      `<td class="sz">${n.danach ? `${d(n.danach)}` : "–"}</td>` +
+      `<td class="sz" style="text-align:left"><span class="leise">${b.name}${b.anmerkung ? ". " + b.anmerkung : ""}</span></td></tr>`;
+  }).join("");
+  const folge = K.liste.slice(0, 12).map(x => `<tr><td class="markt"><b>${wt(x.datum)} ${d(x.datum)}</b></td><td class="sz">${x.bank} (${x.markt})</td><td class="sz">${in_(x.tage)}</td></tr>`).join("");
+  el.innerHTML = `<h2>Termine: Zinsentscheide der Notenbanken (Etappe 5)</h2>
+    ${K.warnung ? `<div class="karte warn"><b>Hinweis:</b> ${K.warnung}</div>` : ""}
+    <div class="karte scroll"><table style="min-width:640px"><thead><tr><th class="markt">Markt</th><th>Nächster Zinsentscheid</th><th>Danach</th><th style="text-align:left">Notenbank</th></tr></thead><tbody>${zeilen}</tbody></table></div>
+    <h3 style="font-size:15px;margin:16px 0 6px">Die nächsten Termine in Reihenfolge</h3>
+    <div class="karte scroll"><table style="min-width:420px"><thead><tr><th class="markt">Datum</th><th>Notenbank</th><th>Wann</th></tr></thead><tbody>${folge || '<tr><td colspan="3" class="leise">Keine Termine in den nächsten 120 Tagen.</td></tr>'}</tbody></table></div>
+    <div class="leise kurz" style="margin-top:6px">Nur Anzeige, kein Teil der Bewertung. Rund um einen Zinsentscheid schwanken die Kurse oft stärker, das ist ein Grund zur Vorsicht, kein Signal. Termine von den Webseiten der Notenbanken abgelesen am ${d(K.stand_liste)}, die Liste reicht bis ${d(K.letzter_termin)}. Die Uhrzeit ist je Notenbank anders (Ortszeit), hier steht nur der Tag. Termine können sich ändern, im Zweifel zählt die Webseite der Notenbank. Wichtige Datenveröffentlichungen (z. B. US-Arbeitsmarktbericht, Inflationsdaten) und Prognosewerte sind nicht enthalten, dafür bräuchte es eine bezahlte Quelle.</div>`;
+}
+
 function vorwaertsRealzins() {
   const V = DATA.vorwaerts_realzins, el = document.getElementById("vwRealzins");
   if (!V) return;
@@ -742,7 +767,7 @@ function aufbau() {
     if (b.dataset.zrquelle) { ZR.quelle = b.dataset.zrquelle; zeitraum(); }
     if (b.dataset.zrwochen) { ZR.ende = zrPlusTage(ZR.start, 7 * +b.dataset.zrwochen); zeitraum(); }
   });
-  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison(); zinsen(); makroAnzeige(); pruefungMakro(); vorwaertstest(); vorwaertsRealzins(); pruefungenVerlauf(); gesamtbewertung();
+  markte(); berichte(); status(); tabelle(); chart(); pruefung(); saison(); zeitraum(); pruefungSaison(); zinsen(); makroAnzeige(); pruefungMakro(); vorwaertstest(); vorwaertsRealzins(); pruefungenVerlauf(); gesamtbewertung(); kalenderAnzeige();
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(() => { chart(); saisonChart(); zeitraum(); zinsen(); makroAnzeige(); }, 50));
 }
 function markte() { document.querySelectorAll("[data-markt]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.markt === markt))); }
