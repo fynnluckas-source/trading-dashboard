@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "0 5 1 2 *"     # jedes Jahr am 1. Februar, 05:00 UTC (die Dezember-Fenster des Vorjahres sind dann abgeschlossen)
   workflow_dispatch:         # auf Wunsch auch von Hand ("Run workflow")
+    inputs:
+      speichern:
+        description: "Ergebnisse ins Repository speichern (zum Ausprobieren auf false stellen)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write            # Ergebnisse und Archiv ins Repository speichern
@@ -32,6 +37,7 @@ jobs:
         run: python pruefungen_jaehrlich.py
 
       - name: Ergebnisse ins Repository speichern
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.speichern }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -42,6 +48,7 @@ jobs:
           fi
 
       - name: Seite neu bauen lassen
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.speichern }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run update.yml
