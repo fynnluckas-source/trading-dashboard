@@ -36,6 +36,12 @@ def beschreibung_saison(d):
     return f"Hauptfall (Kassa, 4 Wochen): Ø {_komma(h['mean'])} %, {h['trefferquote']:.0f} % Treffer, p {p}"
 
 
+def beschreibung_makro(d):
+    namen = {"F1": "Zinsabstand", "F2": "Zinsabstand-Veränderung", "F3": "Inflationsabstand", "F4": "Inflationstrend", "F5": "Realzinsabstand", "F6": "Arbeitslosen-Trend"}
+    treffer = [f"{namen[e['faktor']]} {e['wochen']} Wo. ({e['richtung']})" for e in d["ergebnisse"] if e["bestanden"]]
+    return f"{d['anzahl_bestanden']} von {d['anzahl_tests']} bestanden" + (": " + ", ".join(treffer) if treffer else "")
+
+
 def daten_bis_cot(d):
     return d["zeitraum_bis"]
 
@@ -47,10 +53,12 @@ def daten_bis_saison(d):
 def tests():
     """Alle Prüfungen, die wiederholt werden. Neue Prüfungen (z. B. Makro) hier eintragen."""
     import pruefung_cot
+    import pruefung_makro
     import walkforward
     return [
         {"name": "COT (Etappe 1d)", "runner": pruefung_cot.main, "datei": "pruefung_cot.json", "bis": daten_bis_cot, "text": beschreibung_cot},
         {"name": "Saisonalität (Etappe 2c)", "runner": walkforward.main, "datei": "pruefung_saison.json", "bis": daten_bis_saison, "text": beschreibung_saison},
+        {"name": "Makro (Etappe 3c)", "runner": pruefung_makro.main, "datei": "pruefung_makro.json", "bis": daten_bis_cot, "text": beschreibung_makro},
     ]
 
 

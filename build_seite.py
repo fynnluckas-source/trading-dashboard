@@ -137,6 +137,8 @@ def baue(quellen=None):
     except Exception as e:
         print(f"::warning::Makrodaten konnten nicht aufbereitet werden: {e}")
         mak = None
+    pfad_pm = HIER / "daten" / "pruefung_makro.json"
+    pruefung_makro = json.loads(pfad_pm.read_text(encoding="utf-8")) if pfad_pm.exists() else None
     pfad_vw = HIER / "daten" / "vorwaertstest_ergebnis.json"
     vorwaerts = json.loads(pfad_vw.read_text(encoding="utf-8")) if pfad_vw.exists() else None
     pfad_ps = HIER / "daten" / "pruefung_saison.json"
@@ -152,6 +154,7 @@ def baue(quellen=None):
         "vorwaerts": vorwaerts,
         "zinsen": zin,
         "makro": mak,
+        "pruefung_makro": pruefung_makro,
         "pruefungen_verlauf": pruefungen_jaehrlich.lade_verlauf(),
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),
