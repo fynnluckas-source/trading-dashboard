@@ -103,6 +103,8 @@ def baue(quellen=None):
     jetzt = datetime.now(timezone.utc)
     pfad_pruefung = HIER / "daten" / "pruefung_cot.json"
     pruefung = json.loads(pfad_pruefung.read_text(encoding="utf-8")) if pfad_pruefung.exists() else None
+    pfad_vw = HIER / "daten" / "vorwaertstest_ergebnis.json"
+    vorwaerts = json.loads(pfad_vw.read_text(encoding="utf-8")) if pfad_vw.exists() else None
     pfad_ps = HIER / "daten" / "pruefung_saison.json"
     pruefung_saison = json.loads(pfad_ps.read_text(encoding="utf-8")) if pfad_ps.exists() else None
     try:
@@ -113,6 +115,7 @@ def baue(quellen=None):
     daten = {
         "saison": saison,
         "pruefung_saison": pruefung_saison,
+        "vorwaerts": vorwaerts,
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
         "kurse_future": kurse_fuer_seite(kurse_modul.lade_future()),
         "pruefung": pruefung,

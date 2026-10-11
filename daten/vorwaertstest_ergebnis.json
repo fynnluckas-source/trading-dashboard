@@ -1,0 +1,843 @@
+{
+ "stand": "11.10.2026",
+ "regel": "2c-v1",
+ "erfasst": 120,
+ "ergebnisse": [
+  {
+   "quelle": "kassa",
+   "auswahl": "A",
+   "laenge": 7,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "A",
+   "laenge": 14,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "A",
+   "laenge": 21,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "A",
+   "laenge": 28,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "B",
+   "laenge": 7,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "B",
+   "laenge": 14,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "B",
+   "laenge": 21,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "kassa",
+   "auswahl": "B",
+   "laenge": 28,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "A",
+   "laenge": 7,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "A",
+   "laenge": 14,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "A",
+   "laenge": 21,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "A",
+   "laenge": 28,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "B",
+   "laenge": 7,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "B",
+   "laenge": 14,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "B",
+   "laenge": 21,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "future",
+   "auswahl": "B",
+   "laenge": 28,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "A",
+   "laenge": 7,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "A",
+   "laenge": 14,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "A",
+   "laenge": 21,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "A",
+   "laenge": 28,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "B",
+   "laenge": 7,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "B",
+   "laenge": 14,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "B",
+   "laenge": 21,
+   "n_trades": 0,
+   "bestanden": false
+  },
+  {
+   "quelle": "stabil",
+   "auswahl": "B",
+   "laenge": 28,
+   "n_trades": 0,
+   "bestanden": false
+  }
+ ],
+ "vorschau": [
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-22",
+   "markt": "6A",
+   "laenge": 7,
+   "kassa": 0,
+   "future": 1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": 1.364
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-29",
+   "markt": "6C",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.991
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-05",
+   "markt": "6C",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -1.411
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-12",
+   "markt": "6C",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -1.73
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-29",
+   "markt": "6E",
+   "laenge": 14,
+   "kassa": -1,
+   "future": 0,
+   "stabil": 0,
+   "winrate": 40.0,
+   "sharpe": -1.055
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-05",
+   "markt": "6E",
+   "laenge": 21,
+   "kassa": -1,
+   "future": 0,
+   "stabil": 0,
+   "winrate": 40.0,
+   "sharpe": -1.26
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-12",
+   "markt": "6E",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -1.604
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-29",
+   "markt": "6J",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -2.279
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-05",
+   "markt": "6J",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -2.214
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-12",
+   "markt": "6J",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -2.054
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-22",
+   "markt": "6J",
+   "laenge": 7,
+   "kassa": -1,
+   "future": 0,
+   "stabil": 0,
+   "winrate": 33.3,
+   "sharpe": -2.524
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-22",
+   "markt": "6N",
+   "laenge": 7,
+   "kassa": 0,
+   "future": 1,
+   "stabil": 0,
+   "winrate": 53.3,
+   "sharpe": 0.834
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-29",
+   "markt": "6S",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.036
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-05",
+   "markt": "6S",
+   "laenge": 21,
+   "kassa": 0,
+   "future": -1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": -1.381
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-12",
+   "markt": "6S",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -1.268
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-10-29",
+   "markt": "DX",
+   "laenge": 14,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 66.7,
+   "sharpe": 1.318
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-05",
+   "markt": "DX",
+   "laenge": 21,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 60.0,
+   "sharpe": 1.117
+  },
+  {
+   "start": "2026-10-15",
+   "ende": "2026-11-12",
+   "markt": "DX",
+   "laenge": 28,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 80.0,
+   "sharpe": 1.553
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "6B",
+   "laenge": 7,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.55
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-05",
+   "markt": "6C",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.391
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-12",
+   "markt": "6C",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 13.3,
+   "sharpe": -1.816
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-19",
+   "markt": "6C",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 13.3,
+   "sharpe": -1.761
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "6C",
+   "laenge": 7,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -2.47
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-05",
+   "markt": "6E",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -1.802
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-12",
+   "markt": "6E",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 13.3,
+   "sharpe": -2.06
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-19",
+   "markt": "6E",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -1.48
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "6E",
+   "laenge": 7,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.999
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-05",
+   "markt": "6J",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -2.078
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-12",
+   "markt": "6J",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -1.927
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-19",
+   "markt": "6J",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.825
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "6J",
+   "laenge": 7,
+   "kassa": 0,
+   "future": -1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": -2.034
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "6N",
+   "laenge": 7,
+   "kassa": 0,
+   "future": -1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": -1.669
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-05",
+   "markt": "6S",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -2.164
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-12",
+   "markt": "6S",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 6.7,
+   "sharpe": -1.772
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-19",
+   "markt": "6S",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 20.0,
+   "sharpe": -1.486
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "6S",
+   "laenge": 7,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -2.576
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-05",
+   "markt": "DX",
+   "laenge": 14,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 66.7,
+   "sharpe": 1.65
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-12",
+   "markt": "DX",
+   "laenge": 21,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 93.3,
+   "sharpe": 2.024
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-11-19",
+   "markt": "DX",
+   "laenge": 28,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 80.0,
+   "sharpe": 1.43
+  },
+  {
+   "start": "2026-10-22",
+   "ende": "2026-10-29",
+   "markt": "DX",
+   "laenge": 7,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 86.7,
+   "sharpe": 2.627
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-05",
+   "markt": "6A",
+   "laenge": 7,
+   "kassa": 0,
+   "future": 1,
+   "stabil": 0,
+   "winrate": 60.0,
+   "sharpe": 0.925
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-12",
+   "markt": "6C",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -1.457
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-19",
+   "markt": "6C",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.49
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-26",
+   "markt": "6C",
+   "laenge": 28,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 40.0,
+   "sharpe": -1.163
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-12",
+   "markt": "6E",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -2.086
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-19",
+   "markt": "6E",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -1.287
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-26",
+   "markt": "6E",
+   "laenge": 28,
+   "kassa": -1,
+   "future": 0,
+   "stabil": 0,
+   "winrate": 33.3,
+   "sharpe": -1.094
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-05",
+   "markt": "6E",
+   "laenge": 7,
+   "kassa": 0,
+   "future": -1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": -1.607
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-12",
+   "markt": "6J",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -1.888
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-19",
+   "markt": "6J",
+   "laenge": 21,
+   "kassa": 0,
+   "future": -1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": -1.759
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-26",
+   "markt": "6J",
+   "laenge": 28,
+   "kassa": -1,
+   "future": 0,
+   "stabil": 0,
+   "winrate": 33.3,
+   "sharpe": -1.66
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-05",
+   "markt": "6J",
+   "laenge": 7,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 33.3,
+   "sharpe": -2.109
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-05",
+   "markt": "6N",
+   "laenge": 7,
+   "kassa": 1,
+   "future": 1,
+   "stabil": 1,
+   "winrate": 66.7,
+   "sharpe": 1.473
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-12",
+   "markt": "6S",
+   "laenge": 14,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 26.7,
+   "sharpe": -1.464
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-19",
+   "markt": "6S",
+   "laenge": 21,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 40.0,
+   "sharpe": -1.161
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-05",
+   "markt": "6S",
+   "laenge": 7,
+   "kassa": 0,
+   "future": -1,
+   "stabil": 0,
+   "winrate": 46.7,
+   "sharpe": -1.883
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-12",
+   "markt": "DX",
+   "laenge": 14,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 73.3,
+   "sharpe": 1.768
+  },
+  {
+   "start": "2026-10-29",
+   "ende": "2026-11-19",
+   "markt": "DX",
+   "laenge": 21,
+   "kassa": 1,
+   "future": null,
+   "stabil": null,
+   "winrate": 66.7,
+   "sharpe": 1.064
+  },
+  {
+   "start": "2026-11-05",
+   "ende": "2026-11-19",
+   "markt": "6A",
+   "laenge": 14,
+   "kassa": -1,
+   "future": 0,
+   "stabil": 0,
+   "winrate": 40.0,
+   "sharpe": -1.824
+  },
+  {
+   "start": "2026-11-05",
+   "ende": "2026-11-12",
+   "markt": "6A",
+   "laenge": 7,
+   "kassa": -1,
+   "future": -1,
+   "stabil": -1,
+   "winrate": 40.0,
+   "sharpe": -1.726
+  }
+ ],
+ "min_tage": 365,
+ "min_trades": 300,
+ "beginn": "11.10.2026",
+ "tage": 0,
+ "ausgewertet_haupt": 0,
+ "urteil_moeglich": false
+}

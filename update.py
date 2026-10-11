@@ -11,6 +11,7 @@ import check_quellen
 import config
 import cot
 import kurse
+import vorwaerts
 
 
 def main():
@@ -35,6 +36,13 @@ def main():
         print(f"Future-Kurse: {fut.shape[1]} Märkte bis {fut.index.max().date()}")
     except Exception as e:
         fehler.append(f"Future-Kurse konnten nicht geladen werden (alte Datei bleibt): {e}")
+        print(f"::error::{fehler[-1]}")
+
+    try:
+        n_neu, n_aus, z = vorwaerts.lauf()      # Vorwärtstest: neue Signale festhalten, vorbeigegangene Fenster auswerten
+        print(f"Vorwärtstest: {n_neu} neue Signale, {n_aus} neu ausgewertet, insgesamt {z['erfasst']}")
+    except Exception as e:
+        fehler.append(f"Vorwärtstest fehlgeschlagen: {e}")
         print(f"::error::{fehler[-1]}")
 
     quellen = check_quellen.alle()

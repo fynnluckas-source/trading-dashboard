@@ -178,6 +178,14 @@ def auswerten(daten, jahre, quelle, auswahl, laenge, rng, mit_permutation=True, 
     if t is None:
         return leer
     R = ergebnis_matrix(daten, jahre, laenge, "future" if quelle == "future" else "kassa")
+    return bewerte(t, R, maerkte, jahre, quelle, auswahl, laenge, rng, mit_permutation)
+
+
+def bewerte(t, R, maerkte, jahre, quelle, auswahl, laenge, rng, mit_permutation=True):
+    """Kennzahlen und Zufallstest für eine Liste von Trades (Arrays: jahr, markt, w, s) gegen die Ergebnis-Matrix R (Jahre, Märkte, 52).
+
+    Wird vom Rückwärtstest (diese Datei) und vom Vorwärtstest (vorwaerts.py) gleich benutzt."""
+    leer = {"quelle": quelle, "auswahl": auswahl, "laenge": laenge, "n_trades": 0, "bestanden": False}
     yi = np.array([jahre.index(y) for y in t["jahr"]])
     roh = R[yi, t["markt"], t["w"]]
     ok = ~np.isnan(roh)
