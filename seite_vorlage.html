@@ -114,6 +114,8 @@
 
   <div id="saison"></div>
 
+  <div id="modell"></div>
+
   <div id="zeitraum"></div>
 
   <div id="pruefungSaison"></div>
@@ -408,7 +410,7 @@ function zeitraum() {
   if (!el.dataset.bereit) {
     el.dataset.bereit = "1";
     const [, mm, dd] = S.ref.split("-");
-    ZR.start = [+mm, +dd]; ZR.ende = zrPlusTage(ZR.start, 28); ZR.markt = DATA.maerkte[0];
+    ZR.start = [+mm, +dd]; ZR.ende = zrPlusTage(ZR.start, 21); ZR.markt = DATA.maerkte[0];
     el.innerHTML = `<h2>Zeitraum-Rechner (wie bei Seasonax)</h2>
       <div class="leise">Wähle einen Zeitraum im Jahr. Du siehst für alle 8 Währungen, wie dieser Zeitraum in den letzten Jahren gelaufen ist: Winrate (Anteil der Jahre mit Plus), Durchschnitt, Sharpe Ratio und eine Ampel nach deiner Regel.</div>
       <div class="karte" style="margin-top:10px">
@@ -491,6 +493,59 @@ function zeitraum() {
   document.getElementById("zrNotiz").textContent =
     `Sharpe = (Jahresrendite − ${ZEITRAUM_ZINS.toString().replace(".", ",")} % Zins) geteilt durch die Jahres-Schwankung, beides aus den Tagesrenditen im Fenster hochgerechnet. Das ist eine eigene Kennzahl, die der von Seasonax ähnelt, aber nicht gleich ist: Bei langen Fenstern passt sie fast (6E 22.10. bis 10.11.: −2,31 gegen −2,33), bei Fenstern von ein bis zwei Wochen liegt der Seasonax-Wert oft deutlich darunter (6E 12. bis 19.10.: bei uns +1,9 bis +2,2, bei Seasonax +1,2). Die Winrate ist dagegen fast gleich. Die Jahresrendite entsteht aus sehr kurzen Fenstern und wirkt deshalb übertrieben groß. ` +
     `Die Future-Reihe ist von Kontraktwechseln bereinigt (Yahoo, inoffiziell). Beim Yen zeigt Seasonax nur 7 bis 8 Jahre als „Trades“, dort weichen die Zahlen ab. Klicke auf eine Zeile, um die Einzeljahre eines Marktes zu sehen.`;
+  modellAnzeige(erg);
+}
+
+const MODELL = {wochen: 3, bereit: false};
+function modellAnzeige(erg) {
+  const M = DATA.modell, el = document.getElementById("modell"), S = DATA.saison;
+  if (!M || !erg || !S) return;
+  const pt = x => x === 0 ? "0" : (x > 0 ? "+" : "−") + Math.abs(x);
+  const farbe = x => x > 0 ? "var(--gruen)" : x < 0 ? "var(--rot, #e5484d)" : "var(--leise)";
+  const tage = erg[DATA.maerkte[0]].kalendertage;
+  const jahrAnzeige = (() => { const ref = new Date(S.ref + "T12:00:00"); const d = new Date(Date.UTC(ref.getUTCFullYear(), ZR.start[0] - 1, ZR.start[1])); if (d < ref - 864e5) d.setUTCFullYear(d.getUTCFullYear() + 1); return d.toISOString().slice(0, 10); })();
+  const zeilen = M.faktoren.map(f => {
+    const zellen = DATA.maerkte.map(m => {
+      const p = M.punkte[f.key][m] * f.gewicht;
+      return `<td class="sz"><b style="color:${farbe(p)}">${pt(p)}</b><small class="leise" style="display:block">${M.lesung[f.key][m]}</small></td>`;
+    }).join("");
+    return `<tr><td class="markt"><b>${f.name}</b><span class="leise">Gewicht ×${f.gewicht}</span></td>${zellen}</tr>`;
+  });
+  const saison = DATA.maerkte.map(m => zpunkteSaison(erg[m].winrate, erg[m].sharpe));
+  const sz = DATA.maerkte.map((m, i) => {
+    const r = erg[m];
+    const t = r.winrate === null || r.sharpe === null ? "–" : `${Math.round(r.winrate)} % / ${(r.sharpe > 0 ? "+" : r.sharpe < 0 ? "−" : "") + Math.abs(r.sharpe).toFixed(2).replace(".", ",")}`;
+    return `<td class="sz"><b style="color:${farbe(saison[i])}">${pt(saison[i])}</b><small class="leise" style="display:block">${t}</small></td>`;
+  }).join("");
+  zeilen.push(`<tr><td class="markt"><b>Saisonalität</b><span class="leise">Gewicht ×1, Zeitraum unten</span></td>${sz}</tr>`);
+  const summen = DATA.maerkte.map((m, i) => M.faktoren.reduce((s, f) => s + M.punkte[f.key][m] * f.gewicht, 0) + saison[i]);
+  const summe = summen.map(s => `<td class="sz"><b class="grosszahl" style="color:${farbe(s)}">${pt(s)}</b></td>`).join("");
+  const wochenKnoepfe = [1, 2, 3, 4].map(w => `<button data-mwochen="${w}" aria-pressed="${tage === 7 * w}">${w} Woche${w > 1 ? "n" : ""}</button>`).join("");
+  const jahreKnoepfe = S.jahre.map(n => `<button data-mjahre="${n}" aria-pressed="${n === ZR.n}">${n} Jahre</button>`).join("");
+  el.innerHTML = `<h2>Dein Modell: automatischer Teil (Ansicht, nicht durch Tests belegt)</h2>
+    <div class="karte warn"><b>Das ist eine Zusammenfassung der Lage, kein geprüftes Signal.</b> Die einzelnen Faktoren haben in den Prüfungen keine Vorhersagekraft für 1 bis 4 Wochen gezeigt. Hier steht nur der Teil deines 12-Faktoren-Modells, den das Dashboard aus Daten rechnet (5 von 12 Faktoren). Zentralbank-Bias, BIP, Handelsbilanz, Politik, DXY-Stärke, Immobilien und deine Technik fehlen hier, den vollständigen Score mit Bias und Trade-Ideen findest du im Samstags-Wochenbericht im Vault.</div>
+    <div class="karte" style="margin-top:10px">
+      <div class="reihe" style="margin-top:0"><b>Saisonalität ab</b> <input type="date" id="mStart" value="${jahrAnzeige}" aria-label="Startdatum der Saisonalität" style="background:var(--karte);color:var(--text);border:1px solid var(--linie);border-radius:8px;padding:5px 8px">
+        <span class="leise">für</span> ${wochenKnoepfe}</div>
+      <div class="reihe" style="margin-bottom:0"><span class="leise">Jahre:</span>${jahreKnoepfe}
+        <span class="leise kurz">Das Startdatum darf auch in der Zukunft liegen. Es ist derselbe Zeitraum wie im Zeitraum-Rechner darunter.</span></div>
+    </div>
+    <div class="karte scroll" style="margin-top:10px"><table style="min-width:900px"><thead><tr><th class="markt">Faktor</th>${DATA.maerkte.map(m => `<th>${m}</th>`).join("")}</tr></thead>
+      <tbody>${zeilen.join("")}<tr><td class="markt"><b>Teilsumme</b><span class="leise">5 von 12 Faktoren</span></td>${summe}</tr></tbody></table></div>
+    <div class="leise kurz" style="margin-top:6px">Punkte mit Gewicht (Zinsdifferenz ×2, alle anderen ×1). Zinsdifferenz: Rang des Leitzinses unter den 8 Währungen. COT: Index der Commercials (52 Wochen) und Veränderung zur Vorwoche. Inflation: Abstand zum Ziel der Notenbank. Arbeitsmarkt: Veränderung der Arbeitslosenquote in 6 Monaten. Saisonalität: Winrate und Sharpe müssen gemeinsam passen (ab 60 % und +1,0 gibt +2, ab 55 % und +0,5 gibt +1, bis 40 % und −1,0 gibt −2, bis 50 % und −0,5 gibt −1, sonst 0). Die Regeln stammen aus deinen Tabellen (Zinsdifferenz stimmt mit deiner KW-42-Bewertung in 8 von 8 Fällen überein, COT in 7 von 8, Inflation und Arbeitsmarkt nur in 4 von 8, weil du sie nach Nachrichtenlage bewertest). Achtung Auswahl-Effekt: Wer den Zeitraum so lange verschiebt, bis die Saisonalität gut aussieht, findet immer etwas.</div>`;
+  if (!MODELL.bereit) {
+    MODELL.bereit = true;
+    el.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.mwochen) { MODELL.wochen = +b.dataset.mwochen; ZR.ende = zrPlusTage(ZR.start, 7 * MODELL.wochen); zeitraum(); }
+      if (b.dataset.mjahre) { ZR.n = +b.dataset.mjahre; zeitraum(); }
+    });
+    el.addEventListener("change", e => {
+      if (e.target.id !== "mStart" || !e.target.value) return;
+      const [, mm, dd] = e.target.value.split("-");
+      ZR.start = [+mm, +dd]; ZR.ende = zrPlusTage(ZR.start, 7 * MODELL.wochen); zeitraum();
+    });
+  }
 }
 
 

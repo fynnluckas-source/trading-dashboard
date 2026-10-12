@@ -76,3 +76,75 @@ def test_automatik_laeuft_mit_den_echten_daten_und_nur_erlaubte_punkte():
 def test_saison_fenster_laesst_sich_in_die_zukunft_verschieben():
     a = m.automatik("2026-10-12", saison_start="2026-11-16", saison_tage=21)
     assert a["saison_fenster"] == ("2026-11-16", "2026-12-07")
+
+
+def test_de_format():
+    assert m.de(-5764, 0, True) == "−5.764" and m.de(31447, 0, True) == "+31.447" and m.de(3.456, 2) == "3,46" and m.de(None) == "–"
+
+
+def test_lesung_ohne_stoerende_zeichen():
+    a = m.automatik("2026-10-12")
+    for f, je in a["lesung"].items():
+        for mk, t in je.items():
+            assert ". Δ" not in t and "nan" not in t.lower(), (f, mk, t)
+
+
+def test_gesamt_reproduziert_fynns_kw42_summen():
+    """Mit Fynns eigenen KW-42-Werten für alle Faktoren muss genau seine Tabelle herauskommen (Summen JPY -3, EUR +3, GBP +3, CHF -1, AUD +11, CAD -9, NZD +5, USD +7)."""
+    auto = {"punkte": {f: dict(w) for f, w in m.KW42_FYNN.items()}}
+    ein = {"manuell": {
+        "zb": dict(zip(m._KW42_REIHE, [0, 0, 1, -1, 2, -1, 1, 1])),
+        "bip": dict(zip(m._KW42_REIHE, [1, 2, 0, 2, 0, -1, 0, 1])),
+        "handel": dict(zip(m._KW42_REIHE, [2, 1, -1, 2, -1, 1, -1, -2])),
+        "politik": dict(zip(m._KW42_REIHE, [1, 1, 1, 2, 1, 1, 1, -1])),
+        "dxy": dict(zip(m._KW42_REIHE, [-1, -1, -1, -1, -1, -2, -1, 2])),
+        "immo": dict(zip(m._KW42_REIHE, [1, 0, -1, 1, -2, -1, -1, 0])),
+        "technik": dict(zip(m._KW42_REIHE, [-2, -2, -2, -2, 1, -2, 1, 2])),
+    }, "ueberschreiben": {}}
+    g = m.gesamt(auto, ein)
+    assert g["gesamt"] == {"6J": -3, "6E": 3, "6B": 3, "6S": -1, "6A": 11, "6C": -9, "6N": 5, "DX": 7}
+    assert g["fundamental"]["6A"] == 10 and g["fundamental"]["6C"] == -7
+    assert [g["bias"][k] for k in ("6A", "6C", "6N", "DX", "6J")] == ["Stark Bullish", "Bearish", "Bullish", "Bullish", "Neutral"]
+    assert g["fehlend"] == []
+    # seine Trade-Ideen aus KW 42: AUD/CAD Δ20, USD/CAD Δ16, dann NZD/CAD und AUD/JPY mit Δ14
+    assert [(x["delta"], x["long"], x["short"]) for x in g["ideen"]][:2] == [(20, "6A", "6C"), (16, "DX", "6C")]
+
+
+def test_ueberschreiben_gewinnt_und_fehlende_manuelle_zaehlen_null(tmp_path):
+    datei = tmp_path / "e.md"
+    datei.write_text("""**Stand der Eingaben: 2026-10-09**
+
+## Manuelle Faktoren
+| Faktor | JPY | EUR | GBP | CHF | AUD | CAD | NZD | DXY |
+|---|---|---|---|---|---|---|---|---|
+| Technik | -2 | -2 | | -2 | 1 | -2 | 1 | +2 |
+| Zentralbank-Bias | 0 | 0 | 1 | -1 | 2 | -1 | 1 | 1 |
+
+## Überschreiben (leer = automatisch)
+| Faktor | JPY | EUR | GBP | CHF | AUD | CAD | NZD | DXY |
+|---|---|---|---|---|---|---|---|---|
+| Arbeitsmarkt | | | | | | -2 | | |
+""", encoding="utf-8")
+    e = m.lese_eingaben(datei)
+    assert e["stand"] == "2026-10-09" and e["vorhanden"]
+    assert e["manuell"]["technik"]["DX"] == 2 and "6B" not in e["manuell"]["technik"]
+    assert e["ueberschreiben"] == {"arbeit": {"6C": -2.0}}
+    auto = {"punkte": {f: {k: 0 for k in m.REIHE} for f in m.AUTOMATISCH}}
+    g = m.gesamt(auto, e)
+    zeile = next(z for z in g["zeilen"] if z["key"] == "arbeit")
+    assert zeile["punkte"]["6C"] == -2 and zeile["herkunft"]["6C"] == "ueberschrieben" and zeile["herkunft"]["6J"] == "automatisch"
+    assert ("Technik (dein Bias)", "6B") in g["fehlend"]
+
+
+def test_fehlende_datei_gibt_nur_nullen(tmp_path):
+    e = m.lese_eingaben(tmp_path / "gibt es nicht.md")
+    assert e["vorhanden"] is False and e["manuell"] == {}
+
+
+def test_eingabedatei_im_vault_ist_lesbar():
+    e = m.lese_eingaben()
+    if not e["vorhanden"]:
+        pytest.skip("Vault nicht erreichbar")
+    assert e["stand"] is not None
+    assert set(e["manuell"]) == set(m.MANUELL)
+    assert all(len(v) == 8 for v in e["manuell"].values())

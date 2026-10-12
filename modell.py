@@ -107,6 +107,14 @@ KW42_FYNN = {
 KW42_FYNN = {f: dict(zip(_KW42_REIHE, w)) for f, w in KW42_FYNN.items()}
 
 
+def de(x, stellen=0, vorzeichen=False):
+    """Zahl im deutschen Format (Komma als Dezimaltrenner, Punkt als Tausendertrenner)."""
+    if x is None or pd.isna(x):
+        return "–"
+    t = f"{abs(x):,.{stellen}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return ("+" if x > 0 and vorzeichen else "−" if x < 0 else "") + t
+
+
 def lade_daten():
     """Alle gespeicherten Daten, die die automatischen Faktoren brauchen."""
     import kennzahlen as kz
@@ -150,17 +158,17 @@ def automatik(heute, daten=None, saison_start=None, saison_tage=21, jahre=15):
     for m, cfg in config.MAERKTE.items():
         c = d["k"][(d["k"].markt == m) & (d["k"].gruppe == "comm")].sort_values("datum").iloc[-1]
         punkte["cot"][m] = punkte_cot(c["idx52"], c["d_net"])
-        lesung["cot"][m] = f"Index {c['idx52']:.0f}, Δ {c['d_net']:+,.0f}".replace(",", ".")
+        lesung["cot"][m] = f"Index {c['idx52']:.0f}, Δ {de(c['d_net'], 0, True)}"
 
         mk = makro.kennzahlen(d["makro"], cfg["bis"], heute=heute, leitzins=leitzins[m])
         punkte["inflation"][m] = punkte_inflation(mk.get("inflation_abstand_ziel"))
-        lesung["inflation"][m] = f"{mk.get('inflation')} % (Ziel {mk['ziel']})"
+        lesung["inflation"][m] = f"{de(mk.get('inflation'), 2)} % (Ziel {de(mk['ziel'], 1)})"
         punkte["arbeit"][m] = punkte_arbeit(mk.get("arbeitslos_veraenderung"))
-        lesung["arbeit"][m] = f"{mk.get('arbeitslos')} %, Δ6M {mk.get('arbeitslos_veraenderung')}"
+        lesung["arbeit"][m] = f"{de(mk.get('arbeitslos'), 1)} %, Δ6M {de(mk.get('arbeitslos_veraenderung'), 1, True)}"
 
         z = saisonalitaet.zeitraum(d["kurse"][m], (start.month, start.day), (ende.month, ende.day), jahre, bis_jahr)
         punkte["saison"][m] = punkte_saison(z["winrate"], z["sharpe"])
-        lesung["saison"][m] = "–" if z["winrate"] is None else f"{z['winrate']:.0f} % / {z['sharpe']:+.2f}".replace(".", ",")
+        lesung["saison"][m] = "–" if z["winrate"] is None or z["sharpe"] is None else f"{z['winrate']:.0f} % / {de(z['sharpe'], 2, True)}"
     return {"punkte": punkte, "lesung": lesung, "saison_fenster": (start.strftime("%Y-%m-%d"), ende.strftime("%Y-%m-%d"))}
 
 
@@ -173,3 +181,102 @@ def abgleich_kw42(heute="2026-10-12", daten=None, **kw):
         aus[f] = zeilen
         treffer[f] = sum(1 for _, x, y, _ in zeilen if x == y)
     return aus, treffer
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Etappe 7b: Eingabedatei, Gesamtscore, Trade-Ideen
+
+import re
+from pathlib import Path
+
+VAULT = Path(r"C:\Users\fynnl\OneDrive\Dokumente\Obsidian Claude Fynn\Zweites Gehirn")
+EINGABEN = VAULT / "04 Ressourcen" / "Trading & Charttechnik" / "COT-Analyse" / "Scoring-Eingaben.md"
+WAEHRUNG = {"DXY": "DX", "USD": "DX", "EUR": "6E", "GBP": "6B", "JPY": "6J", "CHF": "6S", "AUD": "6A", "NZD": "6N", "CAD": "6C"}
+ANZEIGE = {"DX": "DXY", "6E": "EUR", "6B": "GBP", "6J": "JPY", "6S": "CHF", "6A": "AUD", "6N": "NZD", "6C": "CAD"}
+REIHE = ["6J", "6E", "6B", "6S", "6A", "6C", "6N", "DX"]            # wie in Fynns Notion-Tabelle
+FAKTORNAME = {name.lower(): key for key, name, _, _ in FAKTOREN}
+FAKTORNAME.update({"zinsdifferenz": "zins", "cot": "cot", "cot commercials": "cot", "inflation": "inflation", "arbeitsmarkt": "arbeit",
+                   "technik": "technik", "saisonalität": "saison", "saisonalitaet": "saison", "dxy-stärke": "dxy", "dxy-staerke": "dxy"})
+AUTOMATISCH = ["zins", "cot", "inflation", "arbeit", "saison"]
+MANUELL = [key for key, _, _, auto in FAKTOREN if not auto]
+GEWICHT = {key: g for key, _, g, _ in FAKTOREN}
+NAME = {key: n for key, n, _, _ in FAKTOREN}
+ALTER_WARNUNG_TAGE = 10
+
+
+def _zahl(text):
+    t = text.strip().replace("−", "-").replace(",", ".").replace("+", "")
+    if t in ("", "-", "–"):
+        return None
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
+def lese_eingaben(pfad=None):
+    """Liest die Eingabedatei (Markdown-Tabellen). Gibt {"manuell": {faktor: {markt: Punkte}}, "ueberschreiben": {...}, "stand": Datum oder None} zurück.
+    Leere Felder bleiben ungesetzt. Punkte vor Gewicht, -2 bis +2."""
+    pfad = Path(pfad) if pfad else EINGABEN
+    aus = {"manuell": {}, "ueberschreiben": {}, "stand": None, "vorhanden": pfad.exists()}
+    if not pfad.exists():
+        return aus
+    text = pfad.read_text(encoding="utf-8")
+    m = re.search(r"Stand der Eingaben:\s*(\d{4}-\d{2}-\d{2})", text)
+    aus["stand"] = m.group(1) if m else None
+    abschnitt, spalten = None, []
+    for zeile in text.splitlines():
+        if zeile.startswith("## "):
+            abschnitt = "ueberschreiben" if "berschreiben" in zeile else "manuell" if "anuell" in zeile else None
+            spalten = []
+            continue
+        if abschnitt is None or not zeile.strip().startswith("|"):
+            continue
+        zellen = [z.strip() for z in zeile.strip().strip("|").split("|")]
+        if zellen and set("".join(zellen)) <= set("-: "):
+            continue
+        if not spalten:
+            spalten = [WAEHRUNG.get(z.upper()) for z in zellen[1:]]
+            continue
+        faktor = FAKTORNAME.get(zellen[0].lower().strip("* "))
+        if faktor is None:
+            continue
+        for markt, z in zip(spalten, zellen[1:]):
+            wert = _zahl(z)
+            if markt is not None and wert is not None:
+                aus[abschnitt].setdefault(faktor, {})[markt] = max(-2.0, min(2.0, wert))
+    return aus
+
+
+def gesamt(auto, eingaben):
+    """Der volle Score je Währung. auto = Ergebnis von automatik(), eingaben = Ergebnis von lese_eingaben().
+    Rückgabe: Zeilen je Faktor (Punkte mit Gewicht, Herkunft), Zwischensumme der 11 fundamentalen Faktoren, Technik, Gesamt, Bias, Trade-Ideen."""
+    zeilen, fehlend = [], []
+    summe_fund = {m: 0.0 for m in REIHE}
+    technik = {}
+    for key, name, gewicht, auto_faktor in FAKTOREN:
+        punkte, herkunft = {}, {}
+        for m in REIHE:
+            ue = eingaben["ueberschreiben"].get(key, {}).get(m)
+            if auto_faktor:
+                if ue is not None:
+                    p, h = ue, "ueberschrieben"
+                else:
+                    p, h = auto["punkte"][key][m], "automatisch"
+            else:
+                p = eingaben["manuell"].get(key, {}).get(m)
+                h = "manuell"
+                if p is None:
+                    p, h = 0, "fehlt"
+                    fehlend.append((name, m))
+            punkte[m] = p * gewicht
+            herkunft[m] = h
+            if key == "technik":
+                technik[m] = punkte[m]
+            else:
+                summe_fund[m] += punkte[m]
+        zeilen.append({"key": key, "name": name, "gewicht": gewicht, "punkte": punkte, "herkunft": herkunft})
+    gesamt_m = {m: summe_fund[m] + technik[m] for m in REIHE}
+    ideen = sorted(((gesamt_m[a] - gesamt_m[b], a, b) for a in REIHE for b in REIHE if a != b), key=lambda x: (-x[0], REIHE.index(x[1]), REIHE.index(x[2])))[:3]
+    return {"zeilen": zeilen, "fundamental": summe_fund, "technik": technik, "gesamt": gesamt_m,
+            "bias": {m: bias(gesamt_m[m]) for m in REIHE}, "ideen": [{"delta": d, "long": a, "short": b} for d, a, b in ideen], "fehlend": fehlend}

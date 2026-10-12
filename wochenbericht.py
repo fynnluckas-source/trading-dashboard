@@ -21,6 +21,7 @@ import config
 import kalender
 import kennzahlen as kz
 import makro
+import modell
 import punktesystem
 import vorwaerts_realzins
 import zinsen
@@ -85,7 +86,75 @@ def cot_zeilen(legacy, tff):
     return zeilen, neu
 
 
-def bericht(heute, daten=None, hinweis_pull=""):
+def punkt(x):
+    if x is None:
+        return "–"
+    x = round(float(x), 1)
+    return "0" if x == 0 else f"{x:+g}".replace("-", "−").replace(".", ",")
+
+
+def modell_zeilen(heute, eingaben_pfad=None, daten=None):
+    """Abschnitt "Dein Modell": Fynns 12-Faktoren-Score (Ansicht, nicht durch Tests belegt)."""
+    heute = pd.Timestamp(heute).normalize()
+    z = []
+    p = z.append
+    auto = modell.automatik(heute, daten)
+    ein = modell.lese_eingaben(eingaben_pfad)
+    g = modell.gesamt(auto, ein)
+    start, ende = auto["saison_fenster"]
+    p("## Dein Modell (Ansicht, nicht durch Tests belegt)")
+    p("Dein 12-Faktoren-Scoring mit denselben Gewichten und derselben Bias-Skala wie in der Notion-Tabelle. **Das ist eine Zusammenfassung der Lage, kein geprüftes Signal.** "
+      "Die einzelnen Datenfaktoren haben in den Prüfungen keine Vorhersagekraft für 1 bis 4 Wochen gezeigt. Ob die Summe besser ist als die Teile, ist offen.")
+    p("")
+    p(f"Saisonalität gilt für **{datum(start)} bis {datum(ende)}** (Standard: ab Berichtstag, 3 Wochen, 15 Jahre, Kassakurse). "
+      "Zeitraum frei wählen kannst du auf der Seite im Zeitraum-Rechner.")
+    if not ein["vorhanden"]:
+        p("")
+        p("> **Eingabedatei nicht gefunden.** Alle manuellen Faktoren zählen als 0.")
+    else:
+        alter = (heute - pd.Timestamp(ein["stand"])).days if ein["stand"] else None
+        if alter is None:
+            p("")
+            p("> **Hinweis:** In der Eingabedatei fehlt „Stand der Eingaben: JJJJ-MM-TT“.")
+        elif alter > modell.ALTER_WARNUNG_TAGE:
+            p("")
+            p(f"> **Hinweis:** Die manuellen Eingaben (Technik, Zentralbank und so weiter) stammen vom {datum(ein['stand'])}, sind also {alter} Tage alt. Bitte in der Datei [[Scoring-Eingaben]] aktualisieren.")
+    p("")
+    kopf = "| Faktor | Gewicht | " + " | ".join(modell.ANZEIGE[m] for m in modell.REIHE) + " |"
+    p(kopf)
+    p("|---|---|" + "---|" * len(modell.REIHE))
+    marke = {"ueberschrieben": " (ü)", "fehlt": " (fehlt)", "automatisch": "", "manuell": ""}
+    for zeile in g["zeilen"]:
+        if zeile["key"] == "technik":
+            continue
+        zellen = [punkt(zeile["punkte"][m]) + marke[zeile["herkunft"][m]] for m in modell.REIHE]
+        p(f"| {zeile['name']} | ×{zeile['gewicht']} | " + " | ".join(zellen) + " |")
+    p("| **Zwischensumme fundamental** | | " + " | ".join(f"**{punkt(g['fundamental'][m])}**" for m in modell.REIHE) + " |")
+    technik = next(x for x in g["zeilen"] if x["key"] == "technik")
+    p("| **Technik (dein Bias)** | ×1 | " + " | ".join(punkt(technik["punkte"][m]) + marke[technik["herkunft"][m]] for m in modell.REIHE) + " |")
+    p("| **GESAMT** | | " + " | ".join(f"**{punkt(g['gesamt'][m])}**" for m in modell.REIHE) + " |")
+    p("| **Bias** | | " + " | ".join(g["bias"][m] for m in modell.REIHE) + " |")
+    p("")
+    p("(ü) = von dir überschrieben, (fehlt) = Eingabe fehlt und zählt 0. Bias-Skala: ab +10 stark bullish, +5 bis +9 bullish, −4 bis +4 neutral, −5 bis −9 bearish, ab −10 stark bearish. Die Spalte „vs. Vorwoche“ kommt mit dem Verlauf.")
+    p("")
+    p("**Trade-Ideen nach Punktunterschied** (größte Differenz zwischen zwei Währungen, keine Handelsempfehlung):")
+    for i, x in enumerate(g["ideen"], 1):
+        p(f"{i}. Long {modell.ANZEIGE[x['long']]} / Short {modell.ANZEIGE[x['short']]} (Δ{punkt(x['delta']).lstrip('+')})")
+    p("")
+    p("Gelesene Werte der automatischen Faktoren:")
+    p("")
+    p("| Faktor | " + " | ".join(modell.ANZEIGE[m] for m in modell.REIHE) + " |")
+    p("|---|" + "---|" * len(modell.REIHE))
+    for f in modell.AUTOMATISCH:
+        p(f"| {modell.NAME[f]} | " + " | ".join(auto["lesung"][f][m] for m in modell.REIHE) + " |")
+    p("")
+    if g["fehlend"]:
+        p(f"Fehlende manuelle Eingaben: {len(g['fehlend'])} Felder (zählen 0).")
+        p("")
+    return z
+
+
+def bericht(heute, daten=None, hinweis_pull="", eingaben_pfad=None):
     """Der Text der Notiz. `heute` ist ein Datum, `daten` der Ordner mit den gespeicherten Dateien."""
     heute = pd.Timestamp(heute).normalize()
     d = Path(daten) if daten else HIER / "daten"
@@ -130,6 +199,14 @@ def bericht(heute, daten=None, hinweis_pull=""):
     p("")
     p("Datentermine sind bisher nur für die USA vollständig erfasst (Australien und Kanada nur der nächste Termin).")
     p("")
+
+    # Dein Modell
+    try:
+        zeilen += modell_zeilen(heute, eingaben_pfad)
+    except Exception as e:
+        p("## Dein Modell (Ansicht, nicht durch Tests belegt)")
+        p(f"Der Abschnitt konnte nicht berechnet werden ({e}).")
+        p("")
 
     # COT
     p("## COT-Positionierung (Index über 52 Wochen)")
@@ -221,13 +298,13 @@ def bericht(heute, daten=None, hinweis_pull=""):
     return "\n".join(zeilen) + "\n"
 
 
-def schreibe(vault, heute=None, daten=None, hinweis_pull=""):
+def schreibe(vault, heute=None, daten=None, hinweis_pull="", eingaben_pfad=None):
     """Schreibt die Notiz. Gibt (Pfad, geschrieben?) zurück. Eine vorhandene Datei wird nie überschrieben."""
     heute = pd.Timestamp(datetime.now().date() if heute is None else heute).normalize()
     ziel = Path(vault) / ORDNER / f"Trading Wochenbericht {heute.strftime('%Y-%m-%d')}.md"
     if ziel.exists():
         return ziel, False
-    text = bericht(heute, daten, hinweis_pull)
+    text = bericht(heute, daten, hinweis_pull, eingaben_pfad)
     ziel.parent.mkdir(parents=True, exist_ok=True)
     ziel.write_text(text, encoding="utf-8")
     return ziel, True

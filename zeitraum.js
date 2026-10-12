@@ -52,4 +52,13 @@ function zampelKombi(kassa, future) {
   if (kassa === "neutral" || future === "neutral") return {status: kassa !== "neutral" ? kassa : future, stabil: false};
   return {status: "widerspruch", stabil: false};
 }
-if (typeof module !== "undefined") module.exports = {zeitraumRechnen, ztag, zampelKombi};
+// Punkte der Saisonalität nach Fynns Skala (wie modell.punkte_saison in Python, ein Test vergleicht beide)
+function zpunkteSaison(winrate, sharpe) {
+  if (winrate === null || sharpe === null || winrate === undefined || sharpe === undefined) return 0;
+  if (winrate >= 60 && sharpe >= 1.0) return 2;
+  if (winrate >= 55 && sharpe >= 0.5) return 1;
+  if (winrate <= 40 && sharpe <= -1.0) return -2;
+  if (winrate <= 50 && sharpe <= -0.5) return -1;
+  return 0;
+}
+if (typeof module !== "undefined") module.exports = {zeitraumRechnen, ztag, zampelKombi, zpunkteSaison};

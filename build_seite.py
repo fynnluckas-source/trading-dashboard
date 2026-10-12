@@ -20,6 +20,7 @@ import kurse as kurse_modul
 import makro
 import pruefungen_jaehrlich
 import kalender
+import modell
 import punktesystem
 import vorwaerts_realzins
 import saisonalitaet
@@ -152,6 +153,14 @@ def baue(quellen=None):
     except Exception as e:
         print(f"::warning::Kalender konnte nicht berechnet werden: {e}")
         kal = None
+    try:
+        a = modell.automatik(datetime.now().date())
+        fk = ("zins", "cot", "inflation", "arbeit")      # Saisonalität rechnet die Seite im Browser (Zeitraum frei wählbar)
+        mod = {"faktoren": [{"key": k, "name": modell.NAME[k], "gewicht": modell.GEWICHT[k]} for k in fk],
+               "punkte": {k: a["punkte"][k] for k in fk}, "lesung": {k: a["lesung"][k] for k in fk}}
+    except Exception as e:
+        print(f"::warning::Dein Modell konnte nicht berechnet werden: {e}")
+        mod = None
     pfad_vr = HIER / "daten" / "vorwaertstest_realzins_ergebnis.json"
     vorwaerts_rz = json.loads(pfad_vr.read_text(encoding="utf-8")) if pfad_vr.exists() else None
     pfad_pm = HIER / "daten" / "pruefung_makro.json"
@@ -174,6 +183,7 @@ def baue(quellen=None):
         "pruefung_makro": pruefung_makro,
         "punktesystem": ps,
         "kalender": kal,
+        "modell": mod,
         "vorwaerts_realzins": vorwaerts_rz,
         "pruefungen_verlauf": pruefungen_jaehrlich.lade_verlauf(),
         "kurse": kurse_fuer_seite(kurse_modul.lade()),
