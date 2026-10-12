@@ -22,7 +22,9 @@ import kalender
 import kennzahlen as kz
 import makro
 import modell
+import modell_verlauf
 import punktesystem
+import kurse as kurse_modul
 import vorwaerts_realzins
 import zinsen
 
@@ -93,7 +95,40 @@ def punkt(x):
     return "0" if x == 0 else f"{x:+g}".replace("-", "−").replace(".", ",")
 
 
-def modell_zeilen(heute, eingaben_pfad=None, daten=None):
+def verlauf_zeilen(vault):
+    """Wie liefen die früheren Trade-Ideen? Zwischenstand des Vorwärtstests von Dein Modell."""
+    z = []
+    p = z.append
+    t = modell_verlauf.tabelle(vault)
+    s = modell_verlauf.zusammenfassung(vault, 2)
+    p("**Verlauf der Trade-Ideen (Vorwärtstest deines Modells):**")
+    if t.empty:
+        p("Noch keine früheren Ideen erfasst. Ab diesem Bericht wird jede Woche die Top 3 festgehalten und nach 1, 2 und 4 Wochen mit den echten Kursen verglichen.")
+        p("")
+        return z
+    p("")
+    p("| Bericht vom | Idee | Δ | 1 Woche | 2 Wochen | 4 Wochen |")
+    p("|---|---|---|---|---|---|")
+    t = t.assign(_rang=pd.to_numeric(t["rang"])).sort_values(["datum", "_rang"], ascending=[False, True]).head(12)
+    for _, r in t.iterrows():
+        def erg(spalte):
+            v = pd.to_numeric(r[spalte], errors="coerce")
+            return "offen" if pd.isna(v) else prozent(v, 2).replace(" %", " %")
+        p(f"| {datum(r['datum'])} | Long {modell.ANZEIGE[r['long']]} / Short {modell.ANZEIGE[r['short']]} | {r['delta']} | {erg('r1w')} | {erg('r2w')} | {erg('r4w')} |")
+    p("")
+    if s["ausgewertet"]:
+        p(f"Zwischenstand (2 Wochen Haltedauer): {s['ausgewertet']} Ideen ausgewertet aus {s['berichtswochen']} Berichten, Ø {prozent(s['mittel'], 2)}, {prozent(s['treffer'], 0)} im Plus. "
+          + ("**Urteil: " + ("bestanden" if s.get("bestanden") else "nicht bestanden") + ".**" if s["urteil_moeglich"] else
+             f"Noch kein Urteil möglich, frühestens nach {modell_verlauf.URTEIL_WOCHEN} Berichten und {modell_verlauf.URTEIL_IDEEN} ausgewerteten Ideen (bestanden nur bei Ø über 0 und über {modell_verlauf.URTEIL_TREFFER:g} % im Plus)."))
+    else:
+        p("Noch keine Idee ausgewertet (die erste braucht 1 Woche nach dem Einstieg).")
+    p("")
+    p("Rendite = Long-Währung minus Short-Währung, Einstieg am ersten Handelstag nach dem Bericht, Kassakurse, ohne Kosten und Swap. Die Top-3 sind oft fast dieselbe Wette (zum Beispiel immer gegen CAD), die Ergebnisse sind also nicht unabhängig.")
+    p("")
+    return z
+
+
+def modell_zeilen(heute, eingaben_pfad=None, daten=None, vault=None):
     """Abschnitt "Dein Modell": Fynns 12-Faktoren-Score (Ansicht, nicht durch Tests belegt)."""
     heute = pd.Timestamp(heute).normalize()
     z = []
@@ -134,13 +169,18 @@ def modell_zeilen(heute, eingaben_pfad=None, daten=None):
     p("| **Technik (dein Bias)** | ×1 | " + " | ".join(punkt(technik["punkte"][m]) + marke[technik["herkunft"][m]] for m in modell.REIHE) + " |")
     p("| **GESAMT** | | " + " | ".join(f"**{punkt(g['gesamt'][m])}**" for m in modell.REIHE) + " |")
     p("| **Bias** | | " + " | ".join(g["bias"][m] for m in modell.REIHE) + " |")
+    vw, vw_tag = modell_verlauf.vorwoche(vault, heute) if vault else (None, None)
+    if vw:
+        p("| **vs. Vorwoche** | | " + " | ".join(punkt(g["gesamt"][m] - vw[m]) if m in vw else "–" for m in modell.REIHE) + " |")
     p("")
-    p("(ü) = von dir überschrieben, (fehlt) = Eingabe fehlt und zählt 0. Bias-Skala: ab +10 stark bullish, +5 bis +9 bullish, −4 bis +4 neutral, −5 bis −9 bearish, ab −10 stark bearish. Die Spalte „vs. Vorwoche“ kommt mit dem Verlauf.")
+    p("(ü) = von dir überschrieben, (fehlt) = Eingabe fehlt und zählt 0. Bias-Skala: ab +10 stark bullish, +5 bis +9 bullish, −4 bis +4 neutral, −5 bis −9 bearish, ab −10 stark bearish. Vorwoche = Bericht vom " + (datum(vw_tag) if vw_tag else "–") + (", die Spalte „vs. Vorwoche“ erscheint, sobald es einen früheren Bericht mit Modell gibt." if not vw else "."))
     p("")
     p("**Trade-Ideen nach Punktunterschied** (größte Differenz zwischen zwei Währungen, keine Handelsempfehlung):")
     for i, x in enumerate(g["ideen"], 1):
         p(f"{i}. Long {modell.ANZEIGE[x['long']]} / Short {modell.ANZEIGE[x['short']]} (Δ{punkt(x['delta']).lstrip('+')})")
     p("")
+    if vault:
+        z += verlauf_zeilen(vault)
     p("Gelesene Werte der automatischen Faktoren:")
     p("")
     p("| Faktor | " + " | ".join(modell.ANZEIGE[m] for m in modell.REIHE) + " |")
@@ -154,7 +194,7 @@ def modell_zeilen(heute, eingaben_pfad=None, daten=None):
     return z
 
 
-def bericht(heute, daten=None, hinweis_pull="", eingaben_pfad=None):
+def bericht(heute, daten=None, hinweis_pull="", eingaben_pfad=None, vault=None):
     """Der Text der Notiz. `heute` ist ein Datum, `daten` der Ordner mit den gespeicherten Dateien."""
     heute = pd.Timestamp(heute).normalize()
     d = Path(daten) if daten else HIER / "daten"
@@ -202,7 +242,7 @@ def bericht(heute, daten=None, hinweis_pull="", eingaben_pfad=None):
 
     # Dein Modell
     try:
-        zeilen += modell_zeilen(heute, eingaben_pfad)
+        zeilen += modell_zeilen(heute, eingaben_pfad, vault=vault)
     except Exception as e:
         p("## Dein Modell (Ansicht, nicht durch Tests belegt)")
         p(f"Der Abschnitt konnte nicht berechnet werden ({e}).")
@@ -304,9 +344,19 @@ def schreibe(vault, heute=None, daten=None, hinweis_pull="", eingaben_pfad=None)
     ziel = Path(vault) / ORDNER / f"Trading Wochenbericht {heute.strftime('%Y-%m-%d')}.md"
     if ziel.exists():
         return ziel, False
-    text = bericht(heute, daten, hinweis_pull, eingaben_pfad)
+    try:
+        modell_verlauf.auswerten(vault, kurse_modul.lade())             # frühere Ideen mit den echten Kursen vergleichen
+    except Exception as e:
+        print(f"Hinweis: Auswertung früherer Ideen nicht möglich ({e})")
+    text = bericht(heute, daten, hinweis_pull, eingaben_pfad, vault)
     ziel.parent.mkdir(parents=True, exist_ok=True)
     ziel.write_text(text, encoding="utf-8")
+    try:                                                                  # Score und Ideen dieses Berichts festhalten (einmalig)
+        auto = modell.automatik(heute)
+        ein = modell.lese_eingaben(eingaben_pfad)
+        modell_verlauf.erfassen(vault, heute, auto, ein, modell.gesamt(auto, ein))
+    except Exception as e:
+        print(f"Hinweis: Der Verlauf konnte nicht gespeichert werden ({e})")
     return ziel, True
 
 

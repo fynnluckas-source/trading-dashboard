@@ -39,3 +39,24 @@ def test_schreibe_legt_ordner_an_und_ueberschreibt_nie(tmp_path):
 def test_vz_und_prozent():
     assert wb.vz(1234) == "+1.234" and wb.vz(-0.5, 1) == "−0,5" and wb.vz(None) == "–"
     assert wb.prozent(3.456) == "3,46 %" and wb.prozent(None) == "–"
+
+
+def test_bericht_mit_verlauf_zeigt_vs_vorwoche_und_ideenverlauf(tmp_path):
+    import modell
+    import modell_verlauf as mv
+    auto = modell.automatik("2026-10-10")
+    ein = modell.lese_eingaben()
+    g = modell.gesamt(auto, ein)
+    mv.erfassen(tmp_path, "2026-10-10", auto, ein, g)
+    t = wb.bericht("2026-10-17", vault=tmp_path)
+    assert "| **vs. Vorwoche** |" in t and "Verlauf der Trade-Ideen" in t and "Vorwoche = Bericht vom 10.10.2026" in t
+    leer = wb.bericht("2026-10-17", vault=tmp_path / "leer")
+    assert "Noch keine früheren Ideen erfasst" in leer and "| **vs. Vorwoche** |" not in leer
+
+
+def test_schreibe_erfasst_den_verlauf_einmalig(tmp_path):
+    import modell_verlauf as mv
+    wb.schreibe(tmp_path, "2026-10-17")
+    assert mv.erfasst(tmp_path, "2026-10-17") and len(mv.tabelle(tmp_path)) == 3
+    wb.schreibe(tmp_path, "2026-10-17")                      # zweiter Lauf am selben Tag ändert nichts
+    assert len(mv.tabelle(tmp_path)) == 3
