@@ -60,3 +60,10 @@ def test_schreibe_erfasst_den_verlauf_einmalig(tmp_path):
     assert mv.erfasst(tmp_path, "2026-10-17") and len(mv.tabelle(tmp_path)) == 3
     wb.schreibe(tmp_path, "2026-10-17")                      # zweiter Lauf am selben Tag ändert nichts
     assert len(mv.tabelle(tmp_path)) == 3
+
+
+def test_cot_tabelle_zeigt_netto_position_wie_tradingview():
+    t = wb.bericht("2026-10-17")
+    i = t.index("## COT-Positionierung")
+    abschnitt = t[i:i + 2500]
+    assert "Netto " in abschnitt and "Δ" in abschnitt and "letzten 52 Wochen" in abschnitt

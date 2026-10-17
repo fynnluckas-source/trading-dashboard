@@ -78,7 +78,7 @@ def cot_zeilen(legacy, tff):
                 zelle.append("–")
                 continue
             marke = " (hoch)" if idx >= 80 else " (tief)" if idx <= 20 else ""
-            zelle.append(f"{idx:.0f}{marke}, Δ {vz(z['d_net'])}")
+            zelle.append(f"{idx:.0f}{marke}, Netto {vz(z['net'])}, Δ {vz(z['d_net'])}")
             if v is not None and not pd.isna(v["idx52"]):
                 vorher = "hoch" if v["idx52"] >= 80 else "tief" if v["idx52"] <= 20 else "mitte"
                 jetzt = "hoch" if idx >= 80 else "tief" if idx <= 20 else "mitte"
@@ -250,7 +250,7 @@ def bericht(heute, daten=None, hinweis_pull="", eingaben_pfad=None, vault=None):
 
     # COT
     p("## COT-Positionierung (Index über 52 Wochen)")
-    p("Index 0 = so short wie im letzten Jahr nie, 100 = so long wie nie. Δ = Veränderung der Netto-Position zur Vorwoche (Kontrakte). Das sind die drei Linien deines TradingView-Indikators.")
+    p("Index 0 = so short wie im letzten Jahr nie, 100 = so long wie nie (Lage der aktuellen Netto-Position zwischen dem Tiefst- und dem Höchstwert der letzten 52 Wochen). Netto = Long minus Short in Kontrakten, derselbe Wert wie rechts an der Linie in deinem TradingView-Indikator. Δ = Veränderung der Netto-Position zur Vorwoche. Das sind die drei Linien deines TradingView-Indikators.")
     p("")
     p("| Währung | Großspekulanten | Commercials | Kleinanleger |")
     p("|---|---|---|---|")

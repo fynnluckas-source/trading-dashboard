@@ -158,7 +158,7 @@ def automatik(heute, daten=None, saison_start=None, saison_tage=21, jahre=15):
     for m, cfg in config.MAERKTE.items():
         c = d["k"][(d["k"].markt == m) & (d["k"].gruppe == "comm")].sort_values("datum").iloc[-1]
         punkte["cot"][m] = punkte_cot(c["idx52"], c["d_net"])
-        lesung["cot"][m] = f"Index {c['idx52']:.0f}, Δ {de(c['d_net'], 0, True)}"
+        lesung["cot"][m] = f"Index {c['idx52']:.0f}, Netto {de(c['net'], 0, True)}, Δ {de(c['d_net'], 0, True)}"
 
         mk = makro.kennzahlen(d["makro"], cfg["bis"], heute=heute, leitzins=leitzins[m])
         punkte["inflation"][m] = punkte_inflation(mk.get("inflation_abstand_ziel"))
