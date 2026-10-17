@@ -10,6 +10,7 @@ Regeln (vor dem ersten Lauf festgelegt, 12.10.2026):
 - Einstieg: Schlusskurs des ersten Handelstags NACH dem Berichtstag. Ausstieg: letzter Handelstag höchstens 7, 14 oder 28 Tage nach dem Einstieg.
 - Rendite einer Idee = Kursänderung der Long-Währung minus Kursänderung der Short-Währung (Kassakurse in US-Dollar). Beim DXY: Long DXY gegen eine
   Währung = Minus ihrer Kursänderung, Short DXY = ihre Kursänderung. Das ist eine Näherung für das Kreuzpaar, kein exakter Handelskurs, ohne Kosten und Swap.
+- Regeländerung 17.10.2026: Die COT-Punkte nutzen ab dem nächsten Bericht den Trend über 4 Wochen statt nur der letzten Woche (Bericht vom 17.10. noch mit 1 Woche).
 - Ein Urteil gibt es frühestens nach 26 Berichtswochen mit mindestens 52 ausgewerteten Ideen (2 Wochen Haltedauer). Bestanden nur, wenn die
   Durchschnittsrendite über 0 liegt und die Trefferquote über 55 % (Zufall wäre 50 %). Bis dahin gibt es nur einen Zwischenstand.
 """

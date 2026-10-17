@@ -49,8 +49,23 @@ def punkte_zins(leitzinsen):
     return aus
 
 
+COT_WOCHEN = 4      # Trend der Commercials: Veränderung über 4 Wochen (5 Wochenberichte), so von Fynn am 17.10.2026 festgelegt (vorher 1 Woche)
+
+
+def veraenderung(reihe, wochen):
+    """Veränderung der Netto-Position über `wochen` Wochenberichte. reihe = nach Datum sortierte Zeilen mit "datum" und "net".
+    None, wenn es zu wenige Berichte gibt oder eine Lücke dazwischen liegt (Abstand mehr als 10 Tage über der Sollzeit)."""
+    if len(reihe) <= wochen:
+        return None
+    jetzt, frueher = reihe.iloc[-1], reihe.iloc[-1 - wochen]
+    tage = (jetzt["datum"] - frueher["datum"]).days
+    if tage > 7 * wochen + 10 or pd.isna(jetzt["net"]) or pd.isna(frueher["net"]):
+        return None
+    return float(jetzt["net"] - frueher["net"])
+
+
 def punkte_cot(idx, d_net):
-    """Commercials: Index (52 Wochen) und Veränderung der Netto-Position zur Vorwoche.
+    """Commercials: Index (52 Wochen) und Veränderung der Netto-Position über COT_WOCHEN Wochen (Trend).
     Ab 80 gleich +2. Ab 50: steigend +2, sonst +1. 20 bis 50: steigend +1, sonst 0. Unter 20: steigend 0, sonst -1."""
     if idx is None or pd.isna(idx):
         return 0
@@ -156,9 +171,11 @@ def automatik(heute, daten=None, saison_start=None, saison_tage=21, jahre=15):
         lesung["zins"][m] = f"{leitzins[m]:.2f} %".replace(".", ",")
 
     for m, cfg in config.MAERKTE.items():
-        c = d["k"][(d["k"].markt == m) & (d["k"].gruppe == "comm")].sort_values("datum").iloc[-1]
-        punkte["cot"][m] = punkte_cot(c["idx52"], c["d_net"])
-        lesung["cot"][m] = f"Index {c['idx52']:.0f}, Netto {de(c['net'], 0, True)}, Δ {de(c['d_net'], 0, True)}"
+        reihe = d["k"][(d["k"].markt == m) & (d["k"].gruppe == "comm")].sort_values("datum")
+        c = reihe.iloc[-1]
+        d4 = veraenderung(reihe, COT_WOCHEN)
+        punkte["cot"][m] = punkte_cot(c["idx52"], d4)
+        lesung["cot"][m] = f"Index {c['idx52']:.0f}, Netto {de(c['net'], 0, True)}, Δ1W {de(c['d_net'], 0, True)}, Δ{COT_WOCHEN}W {de(d4, 0, True)}"
 
         mk = makro.kennzahlen(d["makro"], cfg["bis"], heute=heute, leitzins=leitzins[m])
         punkte["inflation"][m] = punkte_inflation(mk.get("inflation_abstand_ziel"))

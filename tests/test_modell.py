@@ -30,8 +30,8 @@ def test_cot_regel(idx, d, erwartet):
     assert m.punkte_cot(idx, d) == erwartet
 
 
-def test_cot_gegen_fynns_kw42_bis_auf_dxy():
-    # Daten aus der Seite (Commercials, 52 Wochen, Stichtag 06.10.2026): Index und Wochenveränderung
+def test_cot_regel_mit_einer_woche_gegen_fynns_kw42_bis_auf_dxy():
+    # Alte Variante (1 Woche, bis 17.10.2026) als Prüfung der Punkte-Regel selbst: Index und Wochenveränderung, Stichtag 06.10.2026
     daten = {"6J": (22, -5764), "6E": (100, 31447), "6B": (90, 10985), "6S": (29, -2854), "6A": (100, 38744), "6C": (63, 13938), "6N": (53, 12386), "DX": (26, -397)}
     abweichend = [k for k, (i, d) in daten.items() if m.punkte_cot(i, d) != m.KW42_FYNN["cot"][k]]
     assert abweichend == ["DX"]            # bekannte Abweichung: Fynn gab -1, die Regel gibt 0
@@ -148,3 +148,28 @@ def test_eingabedatei_im_vault_ist_lesbar():
     assert e["stand"] is not None
     assert set(e["manuell"]) == set(m.MANUELL)
     assert all(len(v) == 8 for v in e["manuell"].values())
+
+
+def test_veraenderung_ueber_wochen_und_luecken():
+    import pandas as pd
+    tage = pd.date_range("2026-08-04", periods=10, freq="7D")
+    r = pd.DataFrame({"datum": tage, "net": [100, 110, 90, 120, 130, 125, 140, 150, 145, 160]})
+    assert m.veraenderung(r, 1) == 15 and m.veraenderung(r, 4) == 160 - 125 and m.veraenderung(r, 8) == 160 - 110
+    assert m.veraenderung(r, 10) is None                                       # zu wenige Berichte
+    luecke = r.drop(index=[6, 7, 8]).reset_index(drop=True)                     # drei Wochen fehlen
+    assert m.veraenderung(luecke, 4) is None
+
+
+def test_cot_mit_vier_wochen_gegen_fynns_kw42():
+    """Mit dem 4-Wochen-Trend (Stand 06.10.2026) stimmen 7 von 8 Währungen mit Fynns KW-42-Bewertung überein, nur DXY weicht ab."""
+    import pandas as pd
+    import kennzahlen as kz
+    l = pd.read_csv(m.config_daten("cot_legacy.csv"), parse_dates=["datum"])
+    t = pd.read_csv(m.config_daten("cot_tff.csv"), parse_dates=["datum"])
+    k = kz.kennzahlen(l, t)
+    abweichend = []
+    for mk in m.REIHE:
+        reihe = k[(k.markt == mk) & (k.gruppe == "comm") & (k.datum <= "2026-10-06")].sort_values("datum")
+        if m.punkte_cot(reihe.iloc[-1]["idx52"], m.veraenderung(reihe, m.COT_WOCHEN)) != m.KW42_FYNN["cot"][mk]:
+            abweichend.append(mk)
+    assert m.COT_WOCHEN == 4 and abweichend == ["DX"]
