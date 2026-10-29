@@ -348,6 +348,7 @@ AU,inflation,2026-05-31,3.9613
 AU,inflation,2026-06-30,3.7523
 AU,inflation,2026-07-31,3.4528
 AU,inflation,2026-08-31,3.9679
+AU,inflation,2026-09-30,4.3400
 CA,arbeitslos,1999-01-31,7.9000
 CA,arbeitslos,1999-02-28,7.9000
 CA,arbeitslos,1999-03-31,7.9000
@@ -2972,6 +2973,7 @@ NZ,inflation,2025-09-30,3.0469
 NZ,inflation,2025-12-31,3.1080
 NZ,inflation,2026-03-31,3.0793
 NZ,inflation,2026-06-30,4.0582
+NZ,inflation,2026-09-30,3.7149
 US,arbeitslos,1999-01-31,4.3000
 US,arbeitslos,1999-02-28,4.4000
 US,arbeitslos,1999-03-31,4.2000
