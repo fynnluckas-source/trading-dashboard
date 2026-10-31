@@ -167,8 +167,9 @@ def automatik(heute, daten=None, saison_start=None, saison_tage=21, jahre=15):
         land = "US" if m == "DX" else cfg["bis"]
         leitzins[m] = float(d["zinsen"][land].dropna().iloc[-1])
     punkte["zins"] = punkte_zins(leitzins)
+    rang = {m: i for i, m in enumerate(pd.Series(leitzins, dtype=float).sort_values(ascending=False).index, 1)}
     for m in leitzins:
-        lesung["zins"][m] = f"{leitzins[m]:.2f} %".replace(".", ",")
+        lesung["zins"][m] = f"{leitzins[m]:.2f} %, Rang {rang[m]} von {len(leitzins)}".replace(".", ",")
 
     for m, cfg in config.MAERKTE.items():
         reihe = d["k"][(d["k"].markt == m) & (d["k"].gruppe == "comm")].sort_values("datum")
@@ -179,7 +180,7 @@ def automatik(heute, daten=None, saison_start=None, saison_tage=21, jahre=15):
 
         mk = makro.kennzahlen(d["makro"], cfg["bis"], heute=heute, leitzins=leitzins[m])
         punkte["inflation"][m] = punkte_inflation(mk.get("inflation_abstand_ziel"))
-        lesung["inflation"][m] = f"{de(mk.get('inflation'), 2)} % (Ziel {de(mk['ziel'], 1)})"
+        lesung["inflation"][m] = f"{de(mk.get('inflation'), 2)} %, Ziel {de(mk['ziel'], 1)}"
         punkte["arbeit"][m] = punkte_arbeit(mk.get("arbeitslos_veraenderung"))
         lesung["arbeit"][m] = f"{de(mk.get('arbeitslos'), 1)} %, Δ6M {de(mk.get('arbeitslos_veraenderung'), 1, True)}"
 

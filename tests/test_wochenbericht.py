@@ -67,3 +67,54 @@ def test_cot_tabelle_zeigt_netto_position_wie_tradingview():
     i = t.index("## COT-Positionierung")
     abschnitt = t[i:i + 2500]
     assert "Netto " in abschnitt and "Δ" in abschnitt and "letzten 52 Wochen" in abschnitt
+
+
+def _ergebnis_fuer_erklaerung(technik_aud=2, saison_aud=0):
+    import modell
+    reihe = modell.REIHE
+    zeilen = []
+    for k, n, gew, auto in modell.FAKTOREN:
+        punkte = {m: 0.0 for m in reihe}
+        herkunft = {m: ("automatisch" if auto else "manuell") for m in reihe}
+        zeilen.append({"key": k, "name": n, "gewicht": gew, "punkte": punkte, "herkunft": herkunft})
+    z = {x["key"]: x for x in zeilen}
+    z["zins"]["punkte"]["6A"] = 4.0
+    z["immo"]["punkte"]["6A"] = -2.0
+    z["technik"]["punkte"]["6A"] = float(technik_aud)
+    z["saison"]["punkte"]["6A"] = float(saison_aud)
+    fund = {m: sum(x["punkte"][m] for x in zeilen if x["key"] != "technik") for m in reihe}
+    tech = {m: z["technik"]["punkte"][m] for m in reihe}
+    ges = {m: fund[m] + tech[m] for m in reihe}
+    g = {"zeilen": zeilen, "fundamental": fund, "technik": tech, "gesamt": ges,
+         "bias": {m: modell.bias(ges[m]) for m in reihe}, "ideen": [], "fehlend": []}
+    auto = {"lesung": {"zins": {"6A": "4,60 %, Rang 1 von 8"}, "saison": {"6A": "33 % / −1,11"}, "cot": {}, "inflation": {}, "arbeit": {}},
+            "saison_fenster": ("2026-10-31", "2026-11-21")}
+    return g, auto
+
+
+def test_erklaerung_woher_und_veraenderung():
+    import modell
+    g, auto = _ergebnis_fuer_erklaerung(technik_aud=1, saison_aud=-2)
+    vorher = {m: {k: 0.0 for k, *_ in modell.FAKTOREN} for m in modell.REIHE}
+    for m in vorher:
+        vorher[m].update({"gesamt": 0.0, "bias": "Neutral"})
+    vorher["6A"].update({"zins": 4.0, "immo": -2.0, "technik": 2.0, "saison": 0.0, "gesamt": 4.0, "bias": "Neutral"})
+    t = "\n".join(wb.erklaerung_zeilen(g, auto, vorher, "2026-10-25"))
+    aud = t[t.index("**AUD:"):t.index("**CAD:")]
+    assert "Zinsdifferenz +4 (4,60 %, Rang 1 von 8)" in aud and "Immobilien/Kredit −2 (deine Eingabe)" in aud
+    assert "Technik +2 → +1 (deine Eingabe geändert)" in aud
+    assert "Saisonalität 0 → −2 (neuer Zeitraum ab 31.10.2026: 33 % / −1,11)" in aud
+    assert "Vorwoche +4, Neutral, Veränderung −3" in aud
+    jpy = t[t.index("**JPY:"):t.index("**EUR:")]
+    assert "Kein Faktor hat sich geändert" in jpy and "Kein Faktor ist positiv" in jpy
+
+
+def test_erklaerung_ohne_vorwoche_und_bias_wechsel():
+    import modell
+    g, auto = _ergebnis_fuer_erklaerung(technik_aud=2)
+    t = "\n".join(wb.erklaerung_zeilen(g, auto, None, None))
+    assert t.count("noch keinen früheren Bericht") == 8
+    vorher = {m: {**{k: 0.0 for k, *_ in modell.FAKTOREN}, "gesamt": 0.0, "bias": "Neutral"} for m in modell.REIHE}
+    t2 = "\n".join(wb.erklaerung_zeilen(g, auto, vorher, "2026-10-25"))
+    assert "Die Einstufung wechselt von Neutral auf Neutral" not in t2
+    assert "Die Einstufung wechselt von Neutral auf" not in t2[t2.index("**JPY:"):t2.index("**EUR:")]

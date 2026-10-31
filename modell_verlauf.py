@@ -88,6 +88,25 @@ def vorwoche(vault, heute):
     return {r["markt"]: float(r["gesamt"]) for _, r in z.iterrows()}, tag
 
 
+def vorwoche_detail(vault, heute):
+    """Wie vorwoche(), aber mit allen Faktorpunkten: ({markt: {faktor: Punkte, "gesamt": .., "bias": ..}}, Datum) oder (None, None)."""
+    d = _lese(pfad(vault, VERLAUF), VERLAUF_SPALTEN)
+    if d.empty:
+        return None, None
+    grenze = (pd.Timestamp(heute).normalize() - pd.Timedelta(days=4)).strftime("%Y-%m-%d")
+    frueher = d[d["datum"] <= grenze]
+    if frueher.empty:
+        return None, None
+    tag = frueher["datum"].max()
+    aus = {}
+    for _, r in frueher[frueher["datum"] == tag].iterrows():
+        werte = {k: float(r[k]) for k, *_ in modell.FAKTOREN if r.get(k, "") != ""}
+        werte["gesamt"] = float(r["gesamt"])
+        werte["bias"] = r["bias"]
+        aus[r["markt"]] = werte
+    return aus, tag
+
+
 def paar_rendite(r, long, short):
     """Rendite einer Idee aus den Renditen (in %) der Währungen. DXY: Long DXY gegen X = -r(X), Short DXY = r(X)."""
     if long == "DX":

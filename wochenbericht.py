@@ -128,6 +128,87 @@ def verlauf_zeilen(vault):
     return z
 
 
+COT_REGEL_AB = "2026-10-18"      # ab diesem Bericht zählt bei COT der 4-Wochen-Trend (vorher 1 Woche)
+KURZNAME = {"technik": "Technik", "zb": "Zentralbank-Bias", "immo": "Immobilien/Kredit", "inflation": "Inflation", "bip": "BIP/Wachstum"}
+
+
+def _name(key):
+    return KURZNAME.get(key, modell.NAME[key])
+
+
+def _lesung_kurz(auto, key, m):
+    t = auto["lesung"].get(key, {}).get(m)
+    if not t:
+        return ""
+    if key == "cot":                                   # "Index 100, Netto .., Δ1W .., Δ4W .." -> "Index 100, Δ4W .."
+        teile = t.split(", ")
+        return f"{teile[0]}, {teile[-1]}"
+    return t
+
+
+def erklaerung_zeilen(g, auto, vw, vw_tag):
+    """Kurzer Text je Währung: woher der Score kommt und was sich zur Vorwoche geändert hat. Regelbasiert aus der Tabelle, keine KI."""
+    z = []
+    p = z.append
+    herkunft_text = {"manuell": "deine Eingabe", "ueberschrieben": "von dir überschrieben", "fehlt": "Eingabe fehlt"}
+    p("**Erklärung je Währung**")
+    p("")
+    for m in modell.REIHE:
+        werte = {zeile["key"]: (zeile["punkte"][m], zeile["herkunft"][m]) for zeile in g["zeilen"]}
+
+        def teil(key):
+            pkt, herkunft = werte[key]
+            if herkunft == "automatisch":
+                info = _lesung_kurz(auto, key, m)
+            else:
+                info = herkunft_text[herkunft]
+            return f"{_name(key)} {punkt(pkt)}" + (f" ({info})" if info else "")
+
+        pos = sorted([k for k in werte if werte[k][0] > 0], key=lambda k: -werte[k][0])[:3]
+        neg = sorted([k for k in werte if werte[k][0] < 0], key=lambda k: werte[k][0])[:3]
+        null = sum(1 for k in werte if werte[k][0] == 0)
+        kopf = f"- **{modell.ANZEIGE[m]}: {punkt(g['gesamt'][m])}, {g['bias'][m]}**"
+        alt = vw.get(m) if vw else None
+        if alt:
+            kopf += f" (Vorwoche {punkt(alt['gesamt'])}, {alt['bias']}, Veränderung {punkt(g['gesamt'][m] - alt['gesamt'])})"
+        p(kopf)
+        satz = "  Woher der Score kommt: "
+        satz += ("Am stärksten tragen " + ", ".join(teil(k) for k in pos) + ". ") if pos else "Kein Faktor ist positiv. "
+        satz += ("Dagegen wirken " + ", ".join(teil(k) for k in neg) + ". ") if neg else "Kein Faktor ist negativ. "
+        satz += ("Kein Faktor steht bei 0. " if null == 0 else "1 Faktor steht bei 0. " if null == 1 else f"{null} Faktoren stehen bei 0. ") + f"Zusammen: fundamental {punkt(g['fundamental'][m])}, Technik {punkt(g['technik'][m])}."
+        p(satz)
+        if not alt:
+            p("  Zur Vorwoche: Es gibt noch keinen früheren Bericht zum Vergleich.")
+            continue
+        aenderungen = []
+        for key, *_ in modell.FAKTOREN:
+            if key not in alt:
+                continue
+            jetzt, herkunft = werte[key]
+            if abs(jetzt - alt[key]) < 1e-9:
+                continue
+            if herkunft in ("manuell", "ueberschrieben", "fehlt"):
+                grund = "deine Eingabe geändert" if herkunft != "fehlt" else "Eingabe fehlt jetzt"
+            elif key == "saison":
+                grund = f"neuer Zeitraum ab {datum(auto['saison_fenster'][0])}: {_lesung_kurz(auto, key, m)}"
+            else:
+                grund = f"neue Daten: {_lesung_kurz(auto, key, m)}"
+                if key == "cot" and vw_tag < COT_REGEL_AB:
+                    grund += ", teils durch die neue 4-Wochen-Regel"
+            aenderungen.append(f"{_name(key)} {punkt(alt[key])} → {punkt(jetzt)} ({grund})")
+        if aenderungen:
+            text = "  Zur Vorwoche: " + "; ".join(aenderungen) + "."
+        else:
+            text = "  Zur Vorwoche: Kein Faktor hat sich geändert."
+        if alt["bias"] != g["bias"][m]:
+            text += f" Die Einstufung wechselt von {alt['bias']} auf {g['bias'][m]}."
+        p(text)
+    p("")
+    p("Die Texte werden aus der Tabelle erzeugt (keine KI), sie erklären die Rechnung, nicht den Markt.")
+    p("")
+    return z
+
+
 def modell_zeilen(heute, eingaben_pfad=None, daten=None, vault=None):
     """Abschnitt "Dein Modell": Fynns 12-Faktoren-Score (Ansicht, nicht durch Tests belegt)."""
     heute = pd.Timestamp(heute).normalize()
@@ -175,6 +256,8 @@ def modell_zeilen(heute, eingaben_pfad=None, daten=None, vault=None):
     p("")
     p("(ü) = von dir überschrieben, (fehlt) = Eingabe fehlt und zählt 0. Bias-Skala: ab +10 stark bullish, +5 bis +9 bullish, −4 bis +4 neutral, −5 bis −9 bearish, ab −10 stark bearish. Vorwoche = Bericht vom " + (datum(vw_tag) if vw_tag else "–") + (", die Spalte „vs. Vorwoche“ erscheint, sobald es einen früheren Bericht mit Modell gibt." if not vw else "."))
     p("")
+    vw_detail, vw_detail_tag = modell_verlauf.vorwoche_detail(vault, heute) if vault else (None, None)
+    z += erklaerung_zeilen(g, auto, vw_detail, vw_detail_tag)
     p("**Trade-Ideen nach Punktunterschied** (größte Differenz zwischen zwei Währungen, keine Handelsempfehlung):")
     for i, x in enumerate(g["ideen"], 1):
         p(f"{i}. Long {modell.ANZEIGE[x['long']]} / Short {modell.ANZEIGE[x['short']]} (Δ{punkt(x['delta']).lstrip('+')})")
